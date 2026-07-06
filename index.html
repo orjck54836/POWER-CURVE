@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>力量曲線 Power Curve</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: #15171C;
+      color: #EDEAE1;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 34px;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+
+    .sub {
+      color: #8B92A3;
+      font-size: 13px;
+      margin: 0 0 28px 0;
+    }
+
+    .card {
+      background: #1E222B;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .label {
+      font-size: 13px;
+      color: #8B92A3;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .pr-card {
+      background: #1E222B;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+
+    .pr-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .pr-sub {
+      font-size: 11px;
+      color: #8B92A3;
+      margin-top: 2px;
+    }
+
+    .pills {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .pill {
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: #262b36;
+      color: #8B92A3;
+      user-select: none;
+    }
+
+    .pill.small {
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+
+    .pill.active {
+      color: #15171C;
+    }
+
+    .grid-inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    label.field {
+      font-size: 11px;
+      color: #8B92A3;
+    }
+
+    input,
+    select {
+      width: 100%;
+      background: #262b36;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: #EDEAE1;
+      margin-top: 4px;
+      font-family: inherit;
+      font-size: 13px;
+    }
+
+    button.add {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #EDEAE1;
+      color: #15171C;
+      border: none;
+      border-radius: 8px;
+      padding: 9px 18px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .preview {
+      font-size: 12px;
+      color: #8B92A3;
+      margin-bottom: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+    }
+
+    .error {
+      color: #B72E3D;
+      font-size: 12px;
+      margin-bottom: 10px;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #8B92A3;
+      margin-top: 8px;
+    }
+
+    .hist-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #262b36;
+      border-radius: 8px;
+      font-size: 13px;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .hist-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .trash {
+      cursor: pointer;
+      opacity: 0.6;
+      color: #8B92A3;
+      font-size: 14px;
+    }
+
+    .trash:hover {
+      opacity: 1;
+    }
+
+    .empty {
+      color: #8B92A3;
+      font-size: 13px;
+      padding: 10px 0;
+    }
+
+    svg text {
+      font-family: 'Inter', sans-serif;
+      fill: #8B92A3;
+      font-size: 10px;
+    }
+
+    .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+
+    .legend span {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .legend .sw {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>🏋 力量曲線 POWER CURVE</h1>
+    <p class="sub">主項用 RPE 反推 e1RM，輔項看重量與總量趨勢　<span id="syncStatus" style="color:#8B92A3;">連線中...</span></p>
+
+    <div class="pr-grid" id="prGrid"></div>
+
+    <div class="card">
+      <div class="label">新增紀錄</div>
+      <div class="pills" id="categoryPills"></div>
+      <div id="mainLiftPills" class="pills"></div>
+      <div id="accessoryNameField" style="display:none; margin-bottom:14px;">
+        <label class="field">動作名稱</label>
+        <input type="text" id="exerciseName" placeholder="例如：滑輪下拉">
+      </div>
+      <div class="grid-inputs">
+        <div><label class="field">日期</label><input type="date" id="fDate"></div>
+        <div><label class="field">重量 (kg)</label><input type="number" id="fWeight" placeholder="140"></div>
+        <div><label class="field">次數</label><input type="number" id="fReps" placeholder="3"></div>
+        <div><label class="field">組數</label><input type="number" id="fSets" placeholder="1" value="1"></div>
+        <div><label class="field">RPE</label>
+          <select id="fRpe">
+            <option>6</option>
+            <option>6.5</option>
+            <option>7</option>
+            <option>7.5</option>
+            <option selected>8</option>
+            <option>8.5</option>
+            <option>9</option>
+            <option>9.5</option>
+            <option>10</option>
+          </select>
+        </div>
+      </div>
+      <div class="preview" id="preview"></div>
+      <div class="error" id="formError"></div>
+      <button class="add" onclick="handleAdd()">+ 加入紀錄</button>
+      <div class="hint">單筆重量×次數×組數會計入下方「訓練總量」；組數留空預設為 1 組（例如主項只記頂組時）。</div>
+    </div>
+
+    <div class="card">
+      <div class="label">主項 e1RM 趨勢</div>
+      <div id="e1rmChart"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">輔助動作重量趨勢</div>
+      <select id="accessoryPick" style="width:220px; margin-bottom:14px;">
+        <option value="">選擇動作</option>
+      </select>
+      <div id="accChart"></div>
+    </div>
+
+    <div class="card">
+      <div
+        style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+        <div class="label" style="margin-bottom:0;">訓練總量</div>
+        <div class="pills" id="volPills" style="margin-bottom:0;"></div>
+      </div>
+      <div id="volChart"></div>
+      <div class="hint">訓練量＝重量 × 次數 × 組數 加總（單位 kg）。週以週一為起始日分組。</div>
+    </div>
+
+    <div class="card">
+      <div class="label">歷史紀錄</div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <script>
+    const RPE_TABLE = {
+      10: [100, 95.5, 92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9],
+      9.5: [97.8, 93.9, 90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.8],
+      9: [95.5, 92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 71.7],
+      8.5: [93.9, 90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.8, 70.7],
+      8: [92.2, 89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 71.7, 69.4],
+      7.5: [90.7, 87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.8, 70.7, 68.6],
+      7: [89.2, 86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 71.7, 69.4, 67.4],
+      6.5: [87.8, 85.0, 82.4, 79.9, 77.4, 75.1, 72.8, 70.7, 68.6, 66.7],
+      6: [86.3, 83.7, 81.1, 78.6, 76.2, 73.9, 71.7, 69.4, 67.4, 65.6],
+    };
+    const MAIN_LIFTS = {
+      squat: { label: '深蹲', color: '#2E6F9E' },
+      bench: { label: '臥推', color: '#D4A017' },
+      deadlift: { label: '硬舉', color: '#B72E3D' },
+    };
+    const VOL_COLORS = { main: '#4FB477', accessory: '#8B92A3' };
+
+    // ===== Firebase 設定：換成你自己專案的 config =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyCqYNDIkdcL4z8C831J6Y2kopfinKjSziE",
+      authDomain: "power-curve-bfb71.firebaseapp.com",
+      projectId: "power-curve-bfb71",
+      storageBucket: "power-curve-bfb71.firebasestorage.app",
+      messagingSenderId: "100155224305",
+      appId: "1:100155224305:web:3f116ee493692400c57950",
+      measurementId: "G-0MFJHR3B3C"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+    let docRef = null;
+    let entries = [];
+    let category = 'main';
+    let lift = 'squat';
+    let volView = 'week';
+    let saveTimer = null;
+
+    function setSyncStatus(text, color) {
+      const el = document.getElementById('syncStatus');
+      el.textContent = text;
+      el.style.color = color || '#8B92A3';
+    }
+
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        try { await auth.signInAnonymously(); } catch (e) { setSyncStatus('登入失敗，改用本機儲存', '#B72E3D'); loadLocalFallback(); }
+        return;
+      }
+      docRef = db.collection('powerCurveEntries').doc(user.uid);
+      try {
+        const snap = await docRef.get();
+        entries = (snap.exists && snap.data().entries) ? snap.data().entries : [];
+        setSyncStatus('已同步', '#4FB477');
+      } catch (e) {
+        setSyncStatus('連線失敗，改用本機儲存', '#B72E3D');
+        loadLocalFallback();
+      }
+      renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderAll();
+    });
+
+    function loadLocalFallback() {
+      entries = JSON.parse(localStorage.getItem('pl_entries') || '[]');
+    }
+
+    function calcE1RM(weight, reps, rpe) {
+      const r = Math.min(Math.max(Math.round(reps), 1), 10);
+      const table = RPE_TABLE[rpe] || RPE_TABLE[8];
+      return weight / (table[r - 1] / 100);
+    }
+    function getMonday(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      const day = d.getDay();
+      d.setDate(d.getDate() + ((day === 0 ? -6 : 1) - day));
+      return d.toISOString().slice(0, 10);
+    }
+    function save() {
+      renderAll();
+      localStorage.setItem('pl_entries', JSON.stringify(entries)); // 本機備份，離線時還能看
+      if (!docRef) return;
+      setSyncStatus('同步中...', '#8B92A3');
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        try {
+          await docRef.set({ entries, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+          setSyncStatus('已同步', '#4FB477');
+        } catch (e) {
+          setSyncStatus('同步失敗，稍後會再試', '#B72E3D');
+        }
+      }, 500);
+    }
+
+    document.getElementById('fDate').value = new Date().toISOString().slice(0, 10);
+
+    function renderCategoryPills() {
+      const el = document.getElementById('categoryPills');
+      el.innerHTML = '';
+      [['main', '主項'], ['accessory', '輔助動作']].forEach(([k, label]) => {
+        const d = document.createElement('div');
+        d.className = 'pill small' + (category === k ? ' active' : '');
+        d.style.background = category === k ? '#EDEAE1' : '#262b36';
+        d.textContent = label;
+        d.onclick = () => { category = k; renderCategoryPills(); renderMainLiftPills(); updatePreview(); };
+        el.appendChild(d);
+      });
+      document.getElementById('mainLiftPills').style.display = category === 'main' ? 'flex' : 'none';
+      document.getElementById('accessoryNameField').style.display = category === 'accessory' ? 'block' : 'none';
+    }
+    function renderMainLiftPills() {
+      const el = document.getElementById('mainLiftPills');
+      el.innerHTML = '';
+      Object.keys(MAIN_LIFTS).forEach(k => {
+        const d = document.createElement('div');
+        const active = lift === k;
+        d.className = 'pill' + (active ? ' active' : '');
+        d.style.background = active ? MAIN_LIFTS[k].color : '#262b36';
+        d.textContent = MAIN_LIFTS[k].label;
+        d.onclick = () => { lift = k; renderMainLiftPills(); updatePreview(); };
+        el.appendChild(d);
+      });
+    }
+    function updatePreview() {
+      const w = parseFloat(document.getElementById('fWeight').value);
+      const r = parseInt(document.getElementById('fReps').value);
+      const s = parseInt(document.getElementById('fSets').value) || 1;
+      const rpe = document.getElementById('fRpe').value;
+      const el = document.getElementById('preview');
+      if (w && r) {
+        if (category === 'main') {
+          el.textContent = '預估 e1RM：' + (Math.round(calcE1RM(w, r, rpe) * 10) / 10) + ' kg';
+          el.style.color = MAIN_LIFTS[lift].color;
+        } else {
+          el.textContent = '這筆訓練量：' + (w * r * s).toFixed(0) + ' kg';
+          el.style.color = VOL_COLORS.accessory;
+        }
+      } else { el.textContent = ''; }
+    }
+    ['fWeight', 'fReps', 'fSets', 'fRpe'].forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+
+    function handleAdd() {
+      const w = parseFloat(document.getElementById('fWeight').value);
+      const r = parseInt(document.getElementById('fReps').value);
+      const s = parseInt(document.getElementById('fSets').value) || 1;
+      const rpe = parseFloat(document.getElementById('fRpe').value);
+      const date = document.getElementById('fDate').value;
+      const exerciseName = document.getElementById('exerciseName').value.trim();
+      const errEl = document.getElementById('formError');
+      if (!w || !r) { errEl.textContent = '請輸入重量與次數'; return; }
+      if (category === 'accessory' && !exerciseName) { errEl.textContent = '請輸入動作名稱'; return; }
+      errEl.textContent = '';
+      entries.push({
+        id: Date.now().toString(), date, category,
+        lift: category === 'main' ? lift : null,
+        exerciseName: category === 'accessory' ? exerciseName : null,
+        weight: w, reps: r, sets: s, rpe: rpe,
+        e1rm: category === 'main' ? Math.round(calcE1RM(w, r, rpe) * 10) / 10 : null,
+      });
+      entries.sort((a, b) => a.date.localeCompare(b.date));
+      document.getElementById('fWeight').value = ''; document.getElementById('fReps').value = ''; document.getElementById('exerciseName').value = '';
+      updatePreview();
+      save();
+    }
+    function deleteEntry(id) { entries = entries.filter(e => e.id !== id); save(); }
+
+    function renderPRs() {
+      const el = document.getElementById('prGrid');
+      el.innerHTML = '';
+      Object.keys(MAIN_LIFTS).forEach(k => {
+        const list = entries.filter(e => e.category === 'main' && e.lift === k);
+        const best = list.length ? list.reduce((a, b) => b.e1rm > a.e1rm ? b : a) : null;
+        const div = document.createElement('div');
+        div.className = 'pr-card';
+        div.style.borderLeft = '4px solid ' + MAIN_LIFTS[k].color;
+        div.innerHTML = `<div style="color:#8B92A3;font-size:12px;margin-bottom:6px;">🏆 ${MAIN_LIFTS[k].label} 目前最高 e1RM</div>
+      <div class="pr-num">${best ? best.e1rm + ' kg' : '—'}</div>
+      ${best ? `<div class="pr-sub">${best.date} · ${best.weight}kg x${best.reps} @${best.rpe}</div>` : ''}`;
+        el.appendChild(div);
+      });
+    }
+
+    function svgLineChart(containerId, dates, seriesMap, colorMap) {
+      const el = document.getElementById(containerId);
+      if (dates.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
+      const W = 800, H = 260, padL = 40, padR = 10, padT = 10, padB = 30;
+      const allVals = Object.values(seriesMap).flat().filter(v => v != null);
+      const min = Math.min(...allVals) * 0.95, max = Math.max(...allVals) * 1.05;
+      const x = i => padL + (dates.length <= 1 ? 0 : (i / (dates.length - 1)) * (W - padL - padR));
+      const y = v => padT + (1 - (v - min) / (max - min || 1)) * (H - padT - padB);
+      let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
+      svg += `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#262b36"/>`;
+      dates.forEach((d, i) => { if (i % Math.ceil(dates.length / 8 || 1) === 0) svg += `<text x="${x(i)}" y="${H - 10}" text-anchor="middle">${d.slice(5)}</text>`; });
+      Object.keys(seriesMap).forEach(key => {
+        const vals = seriesMap[key];
+        let path = ''; let started = false;
+        vals.forEach((v, i) => { if (v != null) { path += (started ? 'L' : 'M') + x(i) + ',' + y(v) + ' '; started = true; } else { started = false; } });
+        svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"/>`;
+        vals.forEach((v, i) => { if (v != null) svg += `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${colorMap[key]}"/>`; });
+      });
+      svg += `</svg>`;
+      el.innerHTML = svg;
+    }
+
+    function renderE1rmChart() {
+      const mains = entries.filter(e => e.category === 'main');
+      const dates = [...new Set(mains.map(e => e.date))].sort();
+      const seriesMap = {}, colorMap = {};
+      Object.keys(MAIN_LIFTS).forEach(k => {
+        colorMap[k] = MAIN_LIFTS[k].color;
+        seriesMap[k] = dates.map(d => {
+          const list = mains.filter(e => e.lift === k && e.date === d);
+          return list.length ? Math.max(...list.map(e => e.e1rm)) : null;
+        });
+      });
+      svgLineChart('e1rmChart', dates, seriesMap, colorMap);
+      const legend = Object.keys(MAIN_LIFTS).map(k => `<span><span class="sw" style="background:${MAIN_LIFTS[k].color}"></span>${MAIN_LIFTS[k].label}</span>`).join('');
+      document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
+    }
+
+    function renderAccessorySelect() {
+      const names = [...new Set(entries.filter(e => e.category === 'accessory').map(e => e.exerciseName))].sort();
+      const sel = document.getElementById('accessoryPick');
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">選擇動作</option>' + names.map(n => `<option value="${n}">${n}</option>`).join('');
+      sel.value = names.includes(cur) ? cur : '';
+    }
+    function renderAccChart() {
+      const pick = document.getElementById('accessoryPick').value;
+      const el = document.getElementById('accChart');
+      if (!pick) { el.innerHTML = '<div class="empty">選一個動作查看趨勢。</div>'; return; }
+      const list = entries.filter(e => e.category === 'accessory' && e.exerciseName === pick).sort((a, b) => a.date.localeCompare(b.date));
+      if (!list.length) { el.innerHTML = '<div class="empty">這個動作還沒有紀錄。</div>'; return; }
+      const dates = list.map(e => e.date);
+      svgLineChart('accChart', dates, { w: list.map(e => e.weight) }, { w: VOL_COLORS.accessory });
+    }
+    document.getElementById('accessoryPick').addEventListener('change', renderAccChart);
+
+    function renderVolPills() {
+      const el = document.getElementById('volPills');
+      el.innerHTML = '';
+      [['day', '日'], ['week', '週'], ['month', '月']].forEach(([k, label]) => {
+        const d = document.createElement('div');
+        d.className = 'pill small' + (volView === k ? ' active' : '');
+        d.style.background = volView === k ? '#EDEAE1' : '#262b36';
+        d.textContent = label;
+        d.onclick = () => { volView = k; renderVolPills(); renderVolChart(); };
+        el.appendChild(d);
+      });
+    }
+    function renderVolChart() {
+      const keyFn = volView === 'day' ? d => d : volView === 'week' ? getMonday : d => d.slice(0, 7);
+      const map = {};
+      entries.forEach(e => {
+        const key = keyFn(e.date);
+        if (!map[key]) map[key] = { main: 0, accessory: 0 };
+        map[key][e.category] += e.weight * e.reps * e.sets;
+      });
+      const periods = Object.keys(map).sort();
+      const el = document.getElementById('volChart');
+      if (!periods.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
+      const W = 800, H = 260, padL = 50, padR = 10, padT = 10, padB = 30;
+      const maxV = Math.max(...periods.map(p => map[p].main + map[p].accessory)) * 1.1 || 1;
+      const bw = (W - padL - padR) / periods.length * 0.6;
+      const gap = (W - padL - padR) / periods.length;
+      const y = v => padT + (1 - v / maxV) * (H - padT - padB);
+      let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
+      svg += `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="#262b36"/>`;
+      periods.forEach((p, i) => {
+        const xBase = padL + i * gap + gap * 0.2;
+        const mainH = (H - padT - padB) * (map[p].main / maxV);
+        const accH = (H - padT - padB) * (map[p].accessory / maxV);
+        svg += `<rect x="${xBase}" y="${H - padB - mainH}" width="${bw}" height="${mainH}" fill="${VOL_COLORS.main}"/>`;
+        svg += `<rect x="${xBase}" y="${H - padB - mainH - accH}" width="${bw}" height="${accH}" fill="${VOL_COLORS.accessory}"/>`;
+        if (periods.length <= 15 || i % Math.ceil(periods.length / 12) === 0) svg += `<text x="${xBase + bw / 2}" y="${H - 10}" text-anchor="middle">${p.slice(5)}</text>`;
+      });
+      svg += `</svg>`;
+      el.innerHTML = svg + `<div class="legend"><span><span class="sw" style="background:${VOL_COLORS.main}"></span>主項</span><span><span class="sw" style="background:${VOL_COLORS.accessory}"></span>輔助</span></div>`;
+    }
+
+    function renderHistory() {
+      const el = document.getElementById('historyList');
+      if (!entries.length) { el.innerHTML = '<div class="empty">尚無資料</div>'; return; }
+      const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date));
+      el.innerHTML = sorted.map(e => `
+    <div class="hist-row">
+      <div class="hist-left">
+        <span class="dot" style="background:${e.category === 'main' ? MAIN_LIFTS[e.lift].color : VOL_COLORS.accessory}"></span>
+        <span style="color:#8B92A3;width:90px;display:inline-block;">${e.date}</span>
+        <span style="width:90px;display:inline-block;">${e.category === 'main' ? MAIN_LIFTS[e.lift].label : e.exerciseName}</span>
+        <span class="mono">${e.weight}kg × ${e.reps} × ${e.sets}組 @${e.rpe}</span>
+        ${e.e1rm ? `<span class="mono" style="color:${MAIN_LIFTS[e.lift].color};font-weight:700;">e1RM ${e.e1rm}kg</span>` : ''}
+        <span class="mono" style="color:#8B92A3;">量 ${(e.weight * e.reps * e.sets).toFixed(0)}kg</span>
+      </div>
+      <span class="trash" onclick="deleteEntry('${e.id}')">✕</span>
+    </div>`).join('');
+    }
+
+    function renderAll() {
+      renderPRs();
+      renderE1rmChart();
+      renderAccessorySelect();
+      renderAccChart();
+      renderVolChart();
+      renderHistory();
+    }
+
+    renderCategoryPills();
+    renderMainLiftPills();
+    renderVolPills();
+    setSyncStatus('連線中...', '#8B92A3');
+    // 初次畫面先用本機備份資料墊底，等 Firebase 驗證完成後會被雲端資料覆蓋
+    loadLocalFallback();
+    renderAll();
+  </script>
+</body>
+
+</html>
