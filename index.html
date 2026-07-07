@@ -62,6 +62,7 @@
 <div class="wrap">
   <h1>🏋 力量曲線 POWER CURVE</h1>
   <p class="sub">主項用 RPE 反推 e1RM，輔項看重量與總量趨勢　<span id="syncStatus" style="color:#8B92A3;">連線中...</span></p>
+  <div id="authBar" style="margin-bottom:24px;"></div>
 
   <div class="pr-grid" id="prGrid"></div>
 
@@ -151,6 +152,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const provider = new firebase.auth.GoogleAuthProvider();
 let docRef = null;
 let entries = []; // array of "cards": {id, date, category, lift, exerciseName, rows:[{id,weight,reps,sets,rpe}]}
 let category = 'main';
@@ -163,22 +165,42 @@ function setSyncStatus(text, color) {
   el.textContent = text;
   el.style.color = color || '#8B92A3';
 }
+function renderAuthBar(user) {
+  const el = document.getElementById('authBar');
+  if (user) {
+    const name = user.email || user.displayName || '已登入';
+    el.innerHTML = `<span style="color:#8B92A3;font-size:13px;">已登入：${name}</span> <span class="pill small" style="background:#262b36;margin-left:8px;display:inline-block;" onclick="logout()">登出</span>`;
+  } else {
+    el.innerHTML = `<span class="pill small" style="background:#EDEAE1;color:#15171C;display:inline-block;" onclick="loginWithGoogle()">使用 Google 登入（跨裝置同步）</span>`;
+  }
+}
+function loginWithGoogle() {
+  auth.signInWithPopup(provider).catch(() => {
+    auth.signInWithRedirect(provider); // popup 被封鎖時（常見於手機瀏覽器）改用跳轉登入
+  });
+}
+function logout() { auth.signOut(); }
 
 auth.onAuthStateChanged(async (user) => {
+  renderAuthBar(user);
   if (!user) {
-    try { await auth.signInAnonymously(); } catch (e) { setSyncStatus('登入失敗，改用本機儲存', '#B72E3D'); loadLocalFallback(); renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderAll(); }
+    docRef = null;
+    setSyncStatus('未登入（僅本機儲存）', '#8B92A3');
+    loadLocalFallback();
+    renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderAll();
     return;
   }
   docRef = db.collection('powerCurveEntries').doc(user.uid);
   try {
     const snap = await docRef.get();
-    const raw = (snap.exists && snap.data().entries) ? snap.data().entries : [];
-    const migrated = migrateLegacyEntries(raw);
-    entries = migrated;
-    setSyncStatus('已同步', '#4FB477');
-    if (JSON.stringify(migrated) !== JSON.stringify(raw)) {
-      // 舊格式資料已轉換，寫回去，之後就不用再轉一次
-      save();
+    if (snap.exists && snap.data().entries) {
+      entries = migrateLegacyEntries(snap.data().entries);
+      setSyncStatus('已同步', '#4FB477');
+    } else {
+      // 這個 Google 帳號第一次登入：如果本機有資料（例如先前用匿名模式留下的），自動上傳一次
+      loadLocalFallback();
+      setSyncStatus('已同步', '#4FB477');
+      if (entries.length) save();
     }
   } catch (e) {
     setSyncStatus('連線失敗，改用本機儲存', '#B72E3D');
@@ -513,6 +535,7 @@ function renderAll() {
 renderCategoryPills();
 renderMainLiftPills();
 renderVolPills();
+renderAuthBar(null);
 setSyncStatus('連線中...', '#8B92A3');
 loadLocalFallback();
 renderAll();
