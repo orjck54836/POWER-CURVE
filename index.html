@@ -404,7 +404,7 @@ function renderPRs() {
   });
 }
 
-function svgLineChart(containerId, labels, seriesMap, colorMap) {
+function svgLineChart(containerId, labels, seriesMap, colorMap, dashedKeys) {
   const el = document.getElementById(containerId);
   if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
   const W=800,H=260,padL=40,padR=10,padT=10,padB=30;
@@ -418,11 +418,45 @@ function svgLineChart(containerId, labels, seriesMap, colorMap) {
   labels.forEach((d,i) => { if (i%Math.ceil(labels.length/8||1)===0) svg += `<text x="${x(i)}" y="${H-10}" text-anchor="middle">${d.slice(5)}</text>`; });
   Object.keys(seriesMap).forEach(key => {
     const vals = seriesMap[key];
-    let path = ''; let started=false;
-    vals.forEach((v,i) => { if (v!=null) { path += (started?'L':'M')+x(i)+','+y(v)+' '; started=true; } else { started=false; } });
-    svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"/>`;
-    vals.forEach((v,i) => { if (v!=null) svg += `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="${colorMap[key]}"/>`; });
+    const pts = vals.map((v,i)=>({i,v})).filter(p=>p.v!=null);
+    let path = '';
+    pts.forEach((p,idx) => { path += (idx===0?'M':'L')+x(p.i)+','+y(p.v)+' '; });
+    const dash = (dashedKeys && dashedKeys.includes(key)) ? ' stroke-dasharray="5 4"' : '';
+    svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"${dash}/>`;
+    pts.forEach(p => svg += `<circle cx="${x(p.i)}" cy="${y(p.v)}" r="3" fill="${colorMap[key]}"/>`);
   });
+  svg += `</svg>`;
+  el.innerHTML = svg;
+}
+
+function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
+  const el = document.getElementById(containerId);
+  if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
+  const W=800,H=260,padL=10,padR=10,padT=10,padB=30;
+  const allA = Object.values(seriesA).flat().filter(v=>v!=null);
+  const allB = Object.values(seriesB).flat().filter(v=>v!=null);
+  if (!allA.length && !allB.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
+  const minA = allA.length ? Math.min(...allA)*0.9 : 0, maxA = allA.length ? Math.max(...allA)*1.1 : 1;
+  const minB = allB.length ? Math.min(...allB)*0.9 : 0, maxB = allB.length ? Math.max(...allB)*1.1 : 1;
+  const x = i => padL + (labels.length<=1?0:(i/(labels.length-1))*(W-padL-padR));
+  const yA = v => padT + (1-(v-minA)/(maxA-minA||1))*(H-padT-padB);
+  const yB = v => padT + (1-(v-minB)/(maxB-minB||1))*(H-padT-padB);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
+  svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
+  labels.forEach((d,i) => { if (i%Math.ceil(labels.length/8||1)===0) svg += `<text x="${x(i)}" y="${H-10}" text-anchor="middle">${d.slice(5)}</text>`; });
+  function drawSeries(seriesMap, yFn, dashed) {
+    Object.keys(seriesMap).forEach(key => {
+      const vals = seriesMap[key];
+      const pts = vals.map((v,i)=>({i,v})).filter(p=>p.v!=null);
+      if (!pts.length) return;
+      let path = '';
+      pts.forEach((p,idx) => { path += (idx===0?'M':'L')+x(p.i)+','+yFn(p.v)+' '; });
+      svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"${dashed?' stroke-dasharray="5 4"':''}/>`;
+      pts.forEach(p => svg += `<circle cx="${x(p.i)}" cy="${yFn(p.v)}" r="3" fill="${colorMap[key]}"${dashed?' opacity="0.6"':''}/>`);
+    });
+  }
+  drawSeries(seriesA, yA, false);
+  drawSeries(seriesB, yB, true);
   svg += `</svg>`;
   el.innerHTML = svg;
 }
@@ -430,17 +464,24 @@ function svgLineChart(containerId, labels, seriesMap, colorMap) {
 function renderE1rmChart() {
   const mains = entries.filter(e=>e.category==='main');
   const dates = [...new Set(mains.map(e=>e.date))].sort();
-  const seriesMap = {}, colorMap = {};
+  const e1rmSeries = {}, volSeries = {}, colorMap = {};
   Object.keys(MAIN_LIFTS).forEach(k => {
     colorMap[k] = MAIN_LIFTS[k].color;
-    seriesMap[k] = dates.map(d => {
+    e1rmSeries[k] = dates.map(d => {
       const card = mains.find(e=>e.lift===k && e.date===d);
       return card ? cardBestE1RM(card) : null;
     });
+    volSeries[k] = dates.map(d => {
+      const card = mains.find(e=>e.lift===k && e.date===d);
+      return card ? cardVolume(card) : null;
+    });
   });
-  svgLineChart('e1rmChart', dates, seriesMap, colorMap);
+  svgDualLineChart('e1rmChart', dates, e1rmSeries, volSeries, colorMap);
   const legend = Object.keys(MAIN_LIFTS).map(k=>`<span><span class="sw" style="background:${MAIN_LIFTS[k].color}"></span>${MAIN_LIFTS[k].label}</span>`).join('');
-  document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
+  document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}
+    <span>── e1RM（左軸比例）</span>
+    <span style="opacity:0.75;">‑‑‑ 總量（右軸比例，各自獨立）</span>
+  </div>`;
 }
 
 function renderAccessoryDatalist() {
