@@ -433,23 +433,20 @@ function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
   const el = document.getElementById(containerId);
   if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
   const W=800,H=260,padL=48,padR=10,padT=14,padB=30;
-  const allA = Object.values(seriesA).flat().filter(v=>v!=null);
   const allB = Object.values(seriesB).flat().filter(v=>v!=null);
-  if (!allA.length && !allB.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  const minA = allA.length ? Math.min(...allA)*0.9 : 0, maxA = allA.length ? Math.max(...allA)*1.1 : 1;
+  const minA = 0, maxA = 300; // 重量軸固定 0-300 公斤，刻度為 5 的倍數
+  const tickStep = 25;
   const minB = allB.length ? Math.min(...allB)*0.9 : 0, maxB = allB.length ? Math.max(...allB)*1.1 : 1;
   const x = i => padL + (labels.length<=1?0:(i/(labels.length-1))*(W-padL-padR));
   const yA = v => padT + (1-(v-minA)/(maxA-minA||1))*(H-padT-padB);
   const yB = v => padT + (1-(v-minB)/(maxB-minB||1))*(H-padT-padB);
   let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
 
-  // Y 軸格線 + 重量刻度（依 e1RM／主要數列的範圍）
-  const tickCount = 4;
-  for (let t=0; t<=tickCount; t++) {
-    const val = minA + (maxA-minA)*(t/tickCount);
+  // Y 軸格線 + 重量刻度（固定 0-300kg，每 25kg 一格，皆為 5 的倍數）
+  for (let val=minA; val<=maxA; val+=tickStep) {
     const yy = yA(val);
     svg += `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#20242c" stroke-width="1"/>`;
-    svg += `<text x="${padL-8}" y="${yy+3}" text-anchor="end">${Math.round(val)}kg</text>`;
+    svg += `<text x="${padL-8}" y="${yy+3}" text-anchor="end">${val}kg</text>`;
   }
   svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
   labels.forEach((d,i) => { if (i%Math.ceil(labels.length/8||1)===0) svg += `<text x="${x(i)}" y="${H-10}" text-anchor="middle">${d.slice(5)}</text>`; });
