@@ -49,6 +49,13 @@
   .card-trash { cursor:pointer; opacity:0.55; color:#B72E3D; font-size:12px; }
   .card-trash:hover { opacity:1; }
 
+  .hist-group { margin-bottom:20px; }
+  .hist-group-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; margin-bottom:8px; }
+  .hist-scroll { display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; }
+  .hist-card { min-width:210px; max-width:210px; flex:0 0 auto; background:#262b36; border-radius:10px; padding:10px 12px; }
+  .hist-card-date { font-size:12px; color:#8B92A3; margin-bottom:6px; }
+  .hist-card-meta { display:flex; align-items:center; justify-content:space-between; font-size:11.5px; margin-bottom:6px; }
+
   table.voltable { width:100%; border-collapse:collapse; font-size:12.5px; }
   table.voltable th, table.voltable td { padding:6px 10px; text-align:right; white-space:nowrap; }
   table.voltable th:first-child, table.voltable td:first-child { text-align:left; position:sticky; left:0; background:#1E222B; }
@@ -76,7 +83,7 @@
       <datalist id="accNames"></datalist>
     </div>
     <div class="grid-inputs">
-      <div><label class="field">日期</label><input type="date" id="fDate"></div><br>
+      <div><label class="field">日期</label><input type="date" id="fDate"></div>
       <div><label class="field">重量 (kg)</label><input type="number" id="fWeight" placeholder="140"></div>
       <div><label class="field">次數</label><input type="number" id="fReps" placeholder="3"></div>
       <div><label class="field">組數</label><input type="number" id="fSets" placeholder="1" value="1"></div>
@@ -100,8 +107,8 @@
   </div>
 
   <div class="card">
-    <div class="label">輔助動作重量趨勢</div>
-    <select id="accessoryPick" style="width:220px; margin-bottom:14px;"><option value="">選擇動作</option></select>
+    <div class="label">動作總量趨勢</div>
+    <select id="trendPick" style="width:220px; margin-bottom:14px;"><option value="">選擇動作</option></select>
     <div id="accChart"></div>
   </div>
 
@@ -141,14 +148,14 @@ const ACCESSORY_COLOR = '#8B92A3';
 
 // ===== Firebase 設定：換成你自己專案的 config =====
 const firebaseConfig = {
-      apiKey: "AIzaSyCqYNDIkdcL4z8C831J6Y2kopfinKjSziE",
-      authDomain: "power-curve-bfb71.firebaseapp.com",
-      projectId: "power-curve-bfb71",
-      storageBucket: "power-curve-bfb71.firebasestorage.app",
-      messagingSenderId: "100155224305",
-      appId: "1:100155224305:web:3f116ee493692400c57950",
-      measurementId: "G-0MFJHR3B3C"
-    };
+  apiKey: "AIzaSyCqYNDIkdcL4z8C831J6Y2kopfinKjSziE",
+  authDomain: "power-curve-bfb71.firebaseapp.com",
+  projectId: "power-curve-bfb71",
+  storageBucket: "power-curve-bfb71.firebasestorage.app",
+  messagingSenderId: "100155224305",
+  appId: "1:100155224305:web:3f116ee493692400c57950",
+  measurementId: "G-0MFJHR3B3C"
+};
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -436,26 +443,32 @@ function renderE1rmChart() {
   document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
 }
 
-function renderAccessoryOptions() {
+function renderAccessoryDatalist() {
   const names = [...new Set(entries.filter(e=>e.category==='accessory').map(e=>e.exerciseName))].sort();
-  const datalist = document.getElementById('accNames');
-  datalist.innerHTML = names.map(n=>`<option value="${n}"></option>`).join('');
-  const sel = document.getElementById('accessoryPick');
+  document.getElementById('accNames').innerHTML = names.map(n=>`<option value="${n}"></option>`).join('');
+}
+
+function renderTrendOptions() {
+  const sel = document.getElementById('trendPick');
   const cur = sel.value;
-  sel.innerHTML = '<option value="">選擇動作</option>' + names.map(n=>`<option value="${n}">${n}</option>`).join('');
-  sel.value = names.includes(cur) ? cur : '';
+  const mainOpts = Object.keys(MAIN_LIFTS).map(k=>`<option value="main:${k}">${MAIN_LIFTS[k].label}</option>`).join('');
+  const accNames = [...new Set(entries.filter(e=>e.category==='accessory').map(e=>e.exerciseName))].sort();
+  const accOpts = accNames.map(n=>`<option value="acc:${n}">${n}</option>`).join('');
+  sel.innerHTML = '<option value="">選擇動作</option>' + mainOpts + accOpts;
+  sel.value = [...sel.options].some(o=>o.value===cur) ? cur : '';
 }
 function renderAccChart() {
-  const pick = document.getElementById('accessoryPick').value;
+  const pick = document.getElementById('trendPick').value;
   const el = document.getElementById('accChart');
-  if (!pick) { el.innerHTML = '<div class="empty">選一個動作查看趨勢。</div>'; return; }
-  const cards = entries.filter(e=>e.category==='accessory' && e.exerciseName===pick).sort((a,b)=>a.date.localeCompare(b.date));
-  const rows = [];
-  cards.forEach(c => c.rows.forEach(r => rows.push({date:c.date, weight:r.weight})));
-  if (!rows.length) { el.innerHTML = '<div class="empty">這個動作還沒有紀錄。</div>'; return; }
-  svgLineChart('accChart', rows.map(r=>r.date), {w: rows.map(r=>r.weight)}, {w: ACCESSORY_COLOR});
+  if (!pick) { el.innerHTML = '<div class="empty">選一個動作查看總量趨勢。</div>'; return; }
+  const [kind, key] = pick.split(/:(.+)/);
+  const cards = entries.filter(c => kind==='main' ? (c.category==='main' && c.lift===key) : (c.category==='accessory' && c.exerciseName===key))
+    .sort((a,b)=>a.date.localeCompare(b.date));
+  if (!cards.length) { el.innerHTML = '<div class="empty">這個動作還沒有紀錄。</div>'; return; }
+  const color = kind==='main' ? MAIN_LIFTS[key].color : ACCESSORY_COLOR;
+  svgLineChart('accChart', cards.map(c=>c.date), {v: cards.map(c=>cardVolume(c))}, {v: color});
 }
-document.getElementById('accessoryPick').addEventListener('change', renderAccChart);
+document.getElementById('trendPick').addEventListener('change', renderAccChart);
 
 function renderVolPills() {
   const el = document.getElementById('volPills');
@@ -498,27 +511,42 @@ function renderVolTable() {
 function renderHistory() {
   const el = document.getElementById('historyList');
   if (!entries.length) { el.innerHTML = '<div class="empty">尚無資料</div>'; return; }
-  const sorted = [...entries].sort((a,b)=>b.date.localeCompare(a.date));
-  el.innerHTML = sorted.map(card => {
-    const color = exerciseColorOf(card);
-    const e1 = cardBestE1RM(card);
-    const vol = cardVolume(card);
-    const rowsHtml = card.rows.map(r => `
-      <div class="hcard-row">
-        <span class="mono">${r.weight}kg × ${r.reps} × ${r.sets}組${r.rpe!=null ? ' @'+r.rpe : ''}</span>
-        <span class="trash" onclick="deleteRow('${card.id}','${r.id}')">✕</span>
-      </div>`).join('');
-    return `
-      <div class="hcard">
-        <div class="hcard-head">
-          <div class="hcard-title"><span class="dot" style="background:${color}"></span>${card.date} · ${exerciseLabelOf(card)}</div>
-          <div class="hcard-meta">
-            ${e1!=null ? `<span class="mono" style="color:${color};font-weight:700;">e1RM ${e1}kg</span>` : ''}
-            <span class="mono">量 ${vol.toFixed(0)}kg</span>
-            <span class="card-trash" onclick="deleteCard('${card.id}')">刪除整卡</span>
+
+  const groups = {}; // exerciseKey -> {label, color, cards:[]}
+  const order = [];
+  Object.keys(MAIN_LIFTS).forEach(k => { groups[k] = { label: MAIN_LIFTS[k].label, color: MAIN_LIFTS[k].color, cards: [] }; order.push(k); });
+  entries.forEach(card => {
+    const key = exerciseKeyOf(card);
+    if (!groups[key]) { groups[key] = { label: exerciseLabelOf(card), color: exerciseColorOf(card), cards: [] }; order.push(key); }
+    groups[key].cards.push(card);
+  });
+
+  el.innerHTML = order.filter(key => groups[key].cards.length).map(key => {
+    const g = groups[key];
+    const cards = [...g.cards].sort((a,b)=>b.date.localeCompare(a.date));
+    const cardsHtml = cards.map(card => {
+      const e1 = cardBestE1RM(card);
+      const vol = cardVolume(card);
+      const rowsHtml = card.rows.map(r => `
+        <div class="hcard-row">
+          <span class="mono">${r.weight}kg×${r.reps}×${r.sets}組${r.rpe!=null ? ' @'+r.rpe : ''}</span>
+          <span class="trash" onclick="deleteRow('${card.id}','${r.id}')">✕</span>
+        </div>`).join('');
+      return `
+        <div class="hist-card">
+          <div class="hist-card-date">${card.date}</div>
+          <div class="hist-card-meta">
+            ${e1!=null ? `<span class="mono" style="color:${g.color};font-weight:700;">e1RM ${e1}kg</span>` : '<span></span>'}
+            <span class="card-trash" onclick="deleteCard('${card.id}')">刪除</span>
           </div>
-        </div>
-        ${rowsHtml}
+          ${rowsHtml}
+          <div class="mono" style="color:#8B92A3; font-size:11.5px; margin-top:6px;">量 ${vol.toFixed(0)}kg</div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="hist-group">
+        <div class="hist-group-title"><span class="dot" style="background:${g.color}"></span>${g.label}</div>
+        <div class="hist-scroll">${cardsHtml}</div>
       </div>`;
   }).join('');
 }
@@ -526,7 +554,8 @@ function renderHistory() {
 function renderAll() {
   renderPRs();
   renderE1rmChart();
-  renderAccessoryOptions();
+  renderAccessoryDatalist();
+  renderTrendOptions();
   renderAccChart();
   renderVolTable();
   renderHistory();
