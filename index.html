@@ -471,24 +471,17 @@ function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
 function renderE1rmChart() {
   const mains = entries.filter(e=>e.category==='main');
   const dates = [...new Set(mains.map(e=>e.date))].sort();
-  const e1rmSeries = {}, volSeries = {}, colorMap = {};
+  const e1rmSeries = {}, colorMap = {};
   Object.keys(MAIN_LIFTS).forEach(k => {
     colorMap[k] = MAIN_LIFTS[k].color;
     e1rmSeries[k] = dates.map(d => {
       const card = mains.find(e=>e.lift===k && e.date===d);
       return card ? cardBestE1RM(card) : null;
     });
-    volSeries[k] = dates.map(d => {
-      const card = mains.find(e=>e.lift===k && e.date===d);
-      return card ? cardVolume(card) : null;
-    });
   });
-  svgDualLineChart('e1rmChart', dates, e1rmSeries, volSeries, colorMap);
+  svgDualLineChart('e1rmChart', dates, e1rmSeries, {}, colorMap);
   const legend = Object.keys(MAIN_LIFTS).map(k=>`<span><span class="sw" style="background:${MAIN_LIFTS[k].color}"></span>${MAIN_LIFTS[k].label}</span>`).join('');
-  document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}
-    <span>── e1RM（左軸比例）</span>
-    <span style="opacity:0.75;">‑‑‑ 總量（右軸比例，各自獨立）</span>
-  </div>`;
+  document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
 }
 
 function renderAccessoryDatalist() {
@@ -505,6 +498,27 @@ function renderTrendOptions() {
   sel.innerHTML = '<option value="">選擇動作</option>' + mainOpts + accOpts;
   sel.value = [...sel.options].some(o=>o.value===cur) ? cur : '';
 }
+function svgVolumeChart(containerId, dates, values, color) {
+  const el = document.getElementById(containerId);
+  if (!dates.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
+  const W=800,H=290,padL=44,padR=10,padT=14,padB=54;
+  const min = Math.min(...values)*0.9, max = Math.max(...values)*1.1;
+  const x = i => padL + (dates.length<=1?0:(i/(dates.length-1))*(W-padL-padR));
+  const y = v => padT + (1-(v-min)/((max-min)||1))*(H-padT-padB);
+  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:290px;">`;
+  svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
+  let path = '';
+  dates.forEach((d,i) => { path += (i===0?'M':'L')+x(i)+','+y(values[i])+' '; });
+  svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+  dates.forEach((d,i) => {
+    svg += `<circle cx="${x(i)}" cy="${y(values[i])}" r="3" fill="${color}"/>`;
+    svg += `<text x="${x(i)}" y="${H-padB+16}" text-anchor="middle">${d.slice(5)}</text>`;
+    svg += `<text x="${x(i)}" y="${H-padB+30}" text-anchor="middle" style="fill:${color};font-weight:700;">${Math.round(values[i])}kg</text>`;
+  });
+  svg += `</svg>`;
+  el.innerHTML = svg;
+}
+
 function renderAccChart() {
   const pick = document.getElementById('trendPick').value;
   const el = document.getElementById('accChart');
@@ -514,7 +528,7 @@ function renderAccChart() {
     .sort((a,b)=>a.date.localeCompare(b.date));
   if (!cards.length) { el.innerHTML = '<div class="empty">這個動作還沒有紀錄。</div>'; return; }
   const color = kind==='main' ? MAIN_LIFTS[key].color : ACCESSORY_COLOR;
-  svgLineChart('accChart', cards.map(c=>c.date), {v: cards.map(c=>cardVolume(c))}, {v: color});
+  svgVolumeChart('accChart', cards.map(c=>c.date), cards.map(c=>cardVolume(c)), color);
 }
 document.getElementById('trendPick').addEventListener('change', renderAccChart);
 
