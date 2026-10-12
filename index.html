@@ -126,6 +126,40 @@
   details.glossary summary { cursor:pointer; color:#EDEAE1; font-weight:600; }
   .ok { color:#4FB477; } .warn { color:#D4A017; } .bad { color:#B72E3D; } .low { color:#2E6F9E; }
 
+  /* 訓練週期 */
+  .block-now { border-radius:10px; padding:14px; background:#262b36; border-left:4px solid var(--bc); margin-bottom:14px; }
+  .block-now-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
+  .block-now-name { font-size:16px; font-weight:700; }
+  .block-now-week { font-family:'JetBrains Mono',monospace; font-size:13px; color:#8B92A3; }
+  .block-target { font-size:12px; color:#8B92A3; margin-top:6px; }
+  .progress { height:6px; background:#1E222B; border-radius:3px; margin-top:10px; overflow:hidden; }
+  .progress div { height:100%; background:var(--bc); }
+  .timeline { display:flex; gap:3px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; }
+  .tl-seg { flex:0 0 auto; border-radius:6px; padding:6px 8px; font-size:11px; color:#15171C; font-weight:700; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:2px solid transparent; }
+  .tl-seg.sel { border-color:#EDEAE1; }
+  .tl-seg.past { opacity:.55; }
+  .tl-seg small { display:block; font-weight:500; opacity:.8; }
+  .block-form { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; background:#262b36; border-radius:10px; padding:12px; margin-bottom:14px; }
+  .block-form > div { min-width:0; }
+  .block-form input, .block-form select { background:#1E222B; }
+  .block-form .actions { grid-column:1 / -1; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .block-tag { display:inline-block; font-size:10.5px; padding:1px 6px; border-radius:4px; color:#15171C; font-weight:700; vertical-align:middle; }
+
+  /* 編輯單組 */
+  .hcard-row .row-text { flex:1; min-width:0; cursor:pointer; }
+  .row-actions { display:flex; gap:12px; flex:0 0 auto; }
+  .chip.done.js-edit { cursor:pointer; }
+  .row-editor { background:#15171C; border-radius:6px; padding:6px; margin-bottom:4px; }
+  .chips .row-editor { flex-basis:100%; }
+  .ed-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
+  .ed-grid span { font-size:10px; color:#8B92A3; }
+  .row-editor input, .row-editor select { margin-top:0; padding:6px; }
+  .ed-actions { display:flex; gap:6px; margin-top:6px; justify-content:flex-end; align-items:center; }
+  .ed-err { color:#B72E3D; font-size:11px; margin-right:auto; }
+  .ed-btn { border:none; border-radius:6px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
+  .ed-save { background:#EDEAE1; color:#15171C; }
+  .ed-cancel { background:#262b36; color:#EDEAE1; }
+
   @media (max-width:600px) {
     .wrap { padding:calc(16px + env(safe-area-inset-top)) 12px 50px; }
     .card { padding:16px; }
@@ -176,6 +210,17 @@
 
   <div class="card">
     <div class="week-nav">
+      <div class="label" style="margin-bottom:0;">訓練週期</div>
+      <button class="ghost" onclick="openBlockForm()">+ 新增週期</button>
+    </div>
+    <div id="blockNow"></div>
+    <div class="timeline" id="blockTimeline"></div>
+    <div id="blockFormWrap"></div>
+    <div class="table-scroll"><div id="blockReview"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="week-nav">
       <div class="label" style="margin-bottom:0;">訓練日曆</div>
       <div style="display:flex; gap:6px; align-items:center;">
         <button class="ghost" onclick="shiftWeek(-1)" aria-label="上一週">◀</button>
@@ -215,6 +260,8 @@
     <details class="glossary">
       <summary>這些數字是什麼意思？</summary>
       <p><b>RPE 怎麼填</b>：頂組填 RPE 才會算 e1RM；照百分比做的量組留空即可。只填次數＋RPE、重量留空，會依目前 e1RM 給建議重量。點「上次」的任一組可直接帶入表單。</p>
+      <p><b>訓練週期</b>：把課表切成幾週一段，各段有不同目標。累積期堆量（65–80%）、強化期降量升強度（75–87%）、巔峰期低量高強度（85–95%）、減量週讓疲勞消退，最後測試或比賽。週期回顧的 Δ 是「該週期內最佳 e1RM」減去「進入週期前的 e1RM」。</p>
+      <p><b>修改紀錄</b>：歷史紀錄或「今天已做」裡的任一組，點一下就能改重量、次數、組數和 RPE。</p>
       <p><b>目前 e1RM</b>：近 6 週內有 RPE 的頂組換算出的最高估計 1RM，比「歷史最佳」更能反映現在的狀態。</p>
       <p><b>8 週趨勢</b>：近 56 天每次 e1RM 的線性回歸斜率（kg/週）。進階者每週 +0.3～1 kg 已算穩定進步；接近 0 或負值且持續數週，代表可能停滯或疲勞累積。</p>
       <p><b>有效組（hard sets）</b>：RPE ≥ 7 的組，或沒填 RPE 但強度 ≥ 70% e1RM 的組。多數研究建議每個主項每週約 6～15 組有效組。</p>
@@ -274,6 +321,14 @@ const ZONES = [
   {max:Infinity, label:'≥90%', color:'#B72E3D'},
 ];
 const WD_SUN = ['日','一','二','三','四','五','六'];
+const RPE_OPTIONS = [6,6.5,7,7.5,8,8.5,9,9.5,10];
+const BLOCK_TYPES = {
+  accumulation:    { label:'累積期',   color:'#4FB477', pct:[65,80], rpe:[6,8] },
+  intensification: { label:'強化期',   color:'#9B7FD4', pct:[75,87], rpe:[7,9] },
+  peaking:         { label:'巔峰期',   color:'#E07A3F', pct:[85,95], rpe:[8,9.5] },
+  deload:          { label:'減量週',   color:'#6B7385', pct:[55,70], rpe:[5,7] },
+  test:            { label:'測試／比賽', color:'#EDEAE1', pct:[90,105], rpe:[9,10] },
+};
 const WD_MON = ['一','二','三','四','五','六','日'];
 
 // ===== Firebase 設定 =====
@@ -300,6 +355,9 @@ let histView = 'day';
 let histLimit = 14;
 let weekOffset = 0;
 let calcTouched = false;
+let blocks = [];      // {id, type, name, start, weeks}
+let blockEdit = null; // null 或 {id}（id 為 null 表示新增）
+let editing = null;   // 正在編輯的組 {cardId, rowId}
 let saveTimer = null;
 
 // ===== 工具函式 =====
@@ -360,6 +418,7 @@ auth.onAuthStateChanged(async (user) => {
       entries = migrateLegacyEntries(snap.data().entries);
       const p = snap.data().profile;
       profile = p ? { bodyweight: p.bodyweight ?? null, sex: p.sex || 'male' } : loadLocalProfile();
+      blocks = Array.isArray(snap.data().blocks) ? snap.data().blocks : loadLocalBlocks();
       setSyncStatus('已同步', '#4FB477');
     } else {
       loadLocalFallback();
@@ -382,6 +441,11 @@ function loadLocalFallback() {
   try { raw = JSON.parse(localStorage.getItem('pl_entries') || '[]'); } catch { raw = []; }
   entries = migrateLegacyEntries(raw);
   profile = loadLocalProfile();
+  blocks = loadLocalBlocks();
+}
+function loadLocalBlocks() {
+  try { const b = JSON.parse(localStorage.getItem('pl_blocks') || '[]'); return Array.isArray(b) ? b : []; }
+  catch { return []; }
 }
 
 // ===== e1RM 與強度計算 =====
@@ -518,12 +582,13 @@ function save() {
   renderAll();
   localStorage.setItem('pl_entries', JSON.stringify(entries));
   localStorage.setItem('pl_profile', JSON.stringify(profile));
+  localStorage.setItem('pl_blocks', JSON.stringify(blocks));
   if (!docRef) return;
   setSyncStatus('同步中...', '#8B92A3');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
-      await docRef.set({ entries, profile, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await docRef.set({ entries, profile, blocks, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       setSyncStatus('已同步', '#4FB477');
     } catch (e) {
       setSyncStatus('同步失敗，稍後會再試', '#B72E3D');
@@ -603,7 +668,8 @@ function renderLastPanel() {
   }
   if (todayCard) {
     html += `<div class="${prev.length ? 'lp-section' : ''}"><div class="lp-sub">今天已做</div>
-      <div class="chips">${todayCard.rows.map(r => `<span class="chip done">${rowText(r)}</span>`).join('')}</div></div>`;
+      <div class="chips">${todayCard.rows.map(r => isEditing(todayCard, r, 'panel') ? rowEditorHtml(todayCard, r)
+        : `<span class="chip done js-edit" tabindex="0" role="button" title="點一下編輯" data-card="${todayCard.id}" data-row="${r.id}">${rowText(r)}</span>`).join('')}</div></div>`;
   }
   el.innerHTML = html;
 }
@@ -640,7 +706,9 @@ function updatePreview() {
       }
       if (ref) {
         const p = w/ref*100;
-        lines.push(`${Math.round(p)}% e1RM`);
+        const blk = blockAt(date);
+        const t = blk ? BLOCK_TYPES[blk.type] : null;
+        lines.push(`${Math.round(p)}% e1RM${t && (p < t.pct[0] || p > t.pct[1]) ? `（本期 ${t.pct[0]}–${t.pct[1]}%）` : ''}`);
       }
       const rb = repBest(lift, r, date);
       if (rb && w > rb.weight) lines.push(`🏅 ${r} 下新紀錄`);
@@ -727,7 +795,7 @@ function renderPRs() {
 }
 
 // ===== 圖表 =====
-function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
+function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap, bands) {
   const el = $(containerId);
   if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
   const W=800,H=260,padL=48,padR=10,padT=14,padB=30;
@@ -741,6 +809,12 @@ function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
   const yA = v => padT + (1-(v-minA)/(maxA-minA||1))*(H-padT-padB);
   const yB = v => padT + (1-(v-minB)/(maxB-minB||1))*(H-padT-padB);
   let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
+  const stepX = labels.length > 1 ? (W-padL-padR)/(labels.length-1) : (W-padL-padR);
+  (bands || []).forEach(b => {
+    const x0 = Math.max(padL, x(b.i) - stepX/2), x1 = Math.min(W-padR, x(b.j) + stepX/2);
+    svg += `<rect x="${x0}" y="${padT}" width="${Math.max(2, x1-x0)}" height="${H-padT-padB}" fill="${b.color}" opacity="0.12"/>`;
+    svg += `<text x="${x0+4}" y="${padT+10}" style="fill:${b.color};font-weight:700;">${esc(b.label)}</text>`;
+  });
   for (let val=minA; val<=maxA; val+=tickStep) {
     const yy = yA(val);
     svg += `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#20242c" stroke-width="1"/>`;
@@ -775,7 +849,15 @@ function renderE1rmChart() {
       return card ? cardBestE1RM(card) : null;
     });
   });
-  svgDualLineChart('e1rmChart', dates, e1rmSeries, {}, colorMap);
+  const bands = [];
+  sortedBlocks().forEach(b => {
+    const end = blockEnd(b);
+    const i = dates.findIndex(d => d >= b.start && d <= end);
+    if (i < 0) return;
+    let j = i; while (j+1 < dates.length && dates[j+1] <= end) j++;
+    bands.push({ i, j, color: BLOCK_TYPES[b.type].color, label: blockLabel(b) });
+  });
+  svgDualLineChart('e1rmChart', dates, e1rmSeries, {}, colorMap, bands);
   const legend = Object.keys(MAIN_LIFTS).map(k=>`<span><span class="sw" style="background:${MAIN_LIFTS[k].color}"></span>${MAIN_LIFTS[k].label}</span>`).join('');
   $('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
 }
@@ -895,7 +977,9 @@ function renderWeek() {
     return `<div class="wday${d===today?' today':''}${cs.length?'':' rest'}" data-date="${d}" ${cs.length?'tabindex="0" role="button"':''}>
       <div class="wday-h"><span>${WD_MON[i]}</span><span>${d.slice(8)}</span></div>${tags || empty}</div>`;
   }).join('');
-  $('weekSummary').textContent = `${trained} 天　${fmtNum(vol)} kg`;
+  const blk = blockAt(mon) || blockAt(sun);
+  const blkTxt = blk ? `${blockLabel(blk)} 第 ${blockWeek(blk, blockAt(mon) ? mon : blk.start)} 週　` : '';
+  $('weekSummary').textContent = `${blkTxt}${trained} 天　${fmtNum(vol)} kg`;
 }
 $('weekStrip').addEventListener('click', e => {
   const d = e.target.closest('.wday');
@@ -964,10 +1048,68 @@ function renderHistPills() {
     el.appendChild(d);
   });
 }
+function isEditing(card, r, where) { return editing && editing.where === where && editing.cardId === card.id && editing.rowId === r.id; }
 function rowHtml(card, r, ref) {
+  if (isEditing(card, r, 'hist')) return rowEditorHtml(card, r);
   const pct = ref ? ` <span class="muted">${Math.round(r.weight/ref*100)}%</span>` : '';
-  return `<div class="hcard-row"><span class="mono">${rowText(r)}${pct}</span><span class="trash" title="刪除這組" onclick="deleteRow('${card.id}','${r.id}')">✕</span></div>`;
+  const ids = `data-card="${card.id}" data-row="${r.id}"`;
+  return `<div class="hcard-row">
+    <span class="mono row-text js-edit" ${ids} title="點一下編輯">${rowText(r)}${pct}</span>
+    <span class="row-actions">
+      <span class="trash js-edit" ${ids} title="編輯" role="button" tabindex="0">✎</span>
+      <span class="trash" title="刪除這組" role="button" onclick="deleteRow('${card.id}','${r.id}')">✕</span>
+    </span></div>`;
 }
+function rowEditorHtml(card, r) {
+  const opts = `<option value=""${r.rpe==null?' selected':''}>—</option>` +
+    RPE_OPTIONS.map(v => `<option${r.rpe===v?' selected':''}>${v}</option>`).join('');
+  return `<div class="row-editor" data-card="${card.id}" data-row="${r.id}">
+    <div class="ed-grid">
+      <span>kg</span><span>次</span><span>組</span><span>RPE</span>
+      <input class="ed-w" type="number" inputmode="decimal" step="0.5" value="${r.weight}" aria-label="重量">
+      <input class="ed-r" type="number" inputmode="numeric" value="${r.reps}" aria-label="次數">
+      <input class="ed-s" type="number" inputmode="numeric" value="${r.sets}" aria-label="組數">
+      <select class="ed-rpe" aria-label="RPE">${opts}</select>
+    </div>
+    <div class="ed-actions"><span class="ed-err"></span>
+      <button class="ed-btn ed-cancel" data-act="cancel">取消</button>
+      <button class="ed-btn ed-save" data-act="save">儲存</button>
+    </div></div>`;
+}
+function startEdit(cardId, rowId, where) {
+  editing = { cardId, rowId, where };
+  renderHistory(); renderLastPanel();
+  const inp = document.querySelector((where === 'panel' ? '#lastPanel' : '#historyList') + ' .row-editor .ed-w');
+  if (inp) { inp.focus(); inp.select(); }
+}
+function cancelEdit() { editing = null; renderHistory(); renderLastPanel(); }
+function saveEdit(ed) {
+  const card = entries.find(c => c.id === ed.dataset.card);
+  const row = card && card.rows.find(r => r.id === ed.dataset.row);
+  if (!row) { cancelEdit(); return; }
+  const w = parseFloat(ed.querySelector('.ed-w').value);
+  const reps = parseInt(ed.querySelector('.ed-r').value);
+  const sets = parseInt(ed.querySelector('.ed-s').value);
+  const rpeRaw = ed.querySelector('.ed-rpe').value;
+  if (!(w > 0) || !(reps > 0) || !(sets > 0)) { ed.querySelector('.ed-err').textContent = '重量、次數、組數要大於 0'; return; }
+  Object.assign(row, { weight: w, reps, sets, rpe: rpeRaw === '' ? null : parseFloat(rpeRaw) });
+  editing = null;
+  save();
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('.js-edit');
+  if (t) { startEdit(t.dataset.card, t.dataset.row, t.closest('#lastPanel') ? 'panel' : 'hist'); return; }
+  const b = e.target.closest('.row-editor [data-act]');
+  if (b) { const ed = b.closest('.row-editor'); b.dataset.act === 'save' ? saveEdit(ed) : cancelEdit(); }
+});
+document.addEventListener('keydown', e => {
+  const t = e.target.closest('.js-edit');
+  if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startEdit(t.dataset.card, t.dataset.row, t.closest('#lastPanel') ? 'panel' : 'hist'); return; }
+  const ed = e.target.closest('.row-editor');
+  if (!ed) return;
+  if (e.key === 'Enter') { e.preventDefault(); saveEdit(ed); }
+  if (e.key === 'Escape') cancelEdit();
+});
 function renderHistory() {
   const el = $('historyList');
   if (!entries.length) { el.innerHTML = '<div class="empty">還沒有紀錄，從上方「新增紀錄」加入第一組。</div>'; return; }
@@ -1002,7 +1144,7 @@ function renderHistoryByDay(el) {
     }).join('');
     return `<div class="day-block" id="day-${date}">
       <div class="day-head">
-        <div class="day-title">${date}（${wd(date)}）　${dotsHtml}</div>
+        <div class="day-title">${date}（${wd(date)}）　${dotsHtml}${(b => b ? `　<span class="block-tag" style="background:${BLOCK_TYPES[b.type].color}">${esc(blockLabel(b))} W${blockWeek(b, date)}</span>` : '')(blockAt(date))}</div>
         <div class="hcard-meta"><span>${cards.length} 個動作</span><span class="mono">總量 ${fmtNum(vol)}kg</span>${rest!=null ? `<span>距上次練 ${rest} 天休息</span>` : ''}</div>
       </div>
       ${body}
@@ -1242,18 +1384,149 @@ function renderCalc() {
   if (!e1) { el.innerHTML = '<div class="empty">這個主項還沒有 e1RM，先記錄一組有 RPE 的頂組，或手動輸入。</div>'; return; }
   const rpes = [6,7,7.5,8,8.5,9,9.5,10];
   const color = MAIN_LIFTS[$('calcLift').value].color;
-  let html = `<table class="voltable"><thead><tr><th>次數</th>${rpes.map(r=>`<th>@${r}</th>`).join('')}</tr></thead><tbody>`;
+  const blk = blockAt(todayStr());
+  const tr = blk ? BLOCK_TYPES[blk.type].rpe : null;
+  const inR = r => tr && r >= tr[0] && r <= tr[1];
+  let html = `<table class="voltable"><thead><tr><th>次數</th>${rpes.map(r=>`<th${inR(r) ? ` style="color:${BLOCK_TYPES[blk.type].color}"` : ''}>@${r}</th>`).join('')}</tr></thead><tbody>`;
   for (let reps = 1; reps <= 10; reps++) {
     html += `<tr><td>${reps} 下</td>${rpes.map(r => {
       const w = roundTo(e1*pctFor(reps,r)/100, 2.5);
       const strong = (r===8 && reps<=5) ? `style="color:${color};font-weight:700;"` : '';
-      return `<td class="mono" ${strong}>${w}</td>`;
+      return `<td class="mono" ${strong}${inR(r) && !strong ? ' style="background:#262b36"' : ''}>${w}</td>`;
     }).join('')}</tr>`;
   }
   el.innerHTML = html + '</tbody></table>';
 }
 $('calcLift').addEventListener('change', () => { calcTouched = false; renderCalcLiftOptions(); renderCalc(); });
 $('calcE1').addEventListener('input', () => { calcTouched = true; renderCalc(); });
+
+// ===== 訓練週期 =====
+function sortedBlocks() { return [...blocks].sort((a,b)=>a.start.localeCompare(b.start)); }
+function blockEnd(b) { return addDays(b.start, b.weeks*7 - 1); }
+function blockAt(date) { return blocks.find(b => date >= b.start && date <= blockEnd(b)) || null; }
+function blockWeek(b, date) { return Math.floor(daysBetween(b.start, date)/7) + 1; }
+function blockLabel(b) { return b.name || BLOCK_TYPES[b.type].label; }
+function avgIntensity(from, to) {
+  let n = 0, sum = 0;
+  entries.forEach(c => {
+    if (c.category !== 'main' || c.date < from || c.date > to) return;
+    const ref = refE1RM(c.lift, c.date);
+    if (!ref) return;
+    c.rows.forEach(r => { const k = r.reps*r.sets; n += k; sum += k*r.weight/ref*100; });
+  });
+  return n ? sum/n : null;
+}
+function openBlockForm(id) { blockEdit = { id: id || null }; renderBlocks(); }
+function closeBlockForm() { blockEdit = null; renderBlocks(); }
+
+function renderBlocks() {
+  const today = todayStr();
+  const cur = blockAt(today);
+  if (cur) {
+    const t = BLOCK_TYPES[cur.type];
+    const wk = blockWeek(cur, today);
+    const wkStart = addDays(cur.start, (wk-1)*7);
+    const avg = avgIntensity(wkStart, addDays(wkStart, 6));
+    const comp = avg == null ? '' : `　<span class="${avg < t.pct[0] ? 'low' : avg > t.pct[1] ? 'warn' : 'ok'}">本週 ${Math.round(avg)}%</span>`;
+    const prog = Math.min(100, (daysBetween(cur.start, today)+1)/(cur.weeks*7)*100);
+    $('blockNow').innerHTML = `<div class="block-now" style="--bc:${t.color}">
+      <div class="block-now-top"><span class="block-now-name">${esc(blockLabel(cur))}</span><span class="block-now-week">第 ${wk} / ${cur.weeks} 週</span></div>
+      <div class="block-target">強度 ${t.pct[0]}–${t.pct[1]}%　RPE ${t.rpe[0]}–${t.rpe[1]}${comp}</div>
+      <div class="progress"><div style="width:${prog}%"></div></div></div>`;
+  } else {
+    const next = sortedBlocks().find(b => b.start > today);
+    $('blockNow').innerHTML = `<div class="empty" style="padding:0 0 12px">${next
+      ? `下一段「${esc(blockLabel(next))}」${next.start.slice(5)} 開始`
+      : '還沒有安排週期'}</div>`;
+  }
+  $('blockTimeline').innerHTML = sortedBlocks().map(b => {
+    const t = BLOCK_TYPES[b.type];
+    const sel = blockEdit && blockEdit.id === b.id ? ' sel' : '';
+    const past = blockEnd(b) < today ? ' past' : '';
+    return `<div class="tl-seg${sel}${past}" role="button" tabindex="0" data-id="${b.id}" title="點一下編輯"
+      style="background:${t.color};width:${60 + b.weeks*16}px">${esc(blockLabel(b))}<small>${b.start.slice(5)}　${b.weeks} 週</small></div>`;
+  }).join('');
+  renderBlockForm();
+  renderBlockReview();
+}
+$('blockTimeline').addEventListener('click', e => { const s = e.target.closest('.tl-seg'); if (s) openBlockForm(s.dataset.id); });
+$('blockTimeline').addEventListener('keydown', e => { const s = e.target.closest('.tl-seg'); if (s && e.key === 'Enter') openBlockForm(s.dataset.id); });
+
+function renderBlockForm() {
+  const el = $('blockFormWrap');
+  if (!blockEdit) { el.innerHTML = ''; return; }
+  const b = blockEdit.id ? blocks.find(x => x.id === blockEdit.id) : null;
+  const last = sortedBlocks().slice(-1)[0];
+  const defStart = b ? b.start : (last && blockEnd(last) >= todayStr() ? addDays(blockEnd(last), 1) : getMonday(todayStr()));
+  const type = b ? b.type : 'accumulation';
+  el.innerHTML = `<div class="block-form">
+    <div style="grid-column:span 2"><label class="field">類型</label>
+      <select id="bType">${Object.keys(BLOCK_TYPES).map(k => `<option value="${k}"${k===type?' selected':''}>${BLOCK_TYPES[k].label}</option>`).join('')}</select></div>
+    <div style="grid-column:span 2"><label class="field">名稱</label><input id="bName" type="text" value="${esc(b ? b.name || '' : '')}" placeholder="選填"></div>
+    <div style="grid-column:span 3"><label class="field">開始日</label><input id="bStart" type="date" value="${defStart}"></div>
+    <div><label class="field">週數</label><input id="bWeeks" type="number" inputmode="numeric" min="1" max="26" value="${b ? b.weeks : 4}"></div>
+    <div class="actions">
+      <button class="add" style="width:auto;padding:9px 18px;" onclick="saveBlock()">儲存</button>
+      <button class="ghost" onclick="closeBlockForm()">取消</button>
+      ${b ? `<button class="ghost" style="color:#B72E3D;margin-left:auto;" onclick="deleteBlock('${b.id}')">刪除</button>` : ''}
+      <span class="error" id="bErr" style="margin:0;"></span>
+    </div></div>`;
+}
+function saveBlock() {
+  const type = $('bType').value;
+  const name = $('bName').value.trim();
+  const start = $('bStart').value;
+  const weeks = parseInt($('bWeeks').value);
+  const err = $('bErr');
+  if (!start) { err.textContent = '請選擇開始日'; return; }
+  if (!(weeks >= 1 && weeks <= 26)) { err.textContent = '週數請填 1–26'; return; }
+  const id = blockEdit && blockEdit.id;
+  const cand = { id: id || Date.now().toString(36)+Math.random().toString(36).slice(2,6), type, name, start, weeks };
+  const end = blockEnd(cand);
+  const clash = blocks.find(b => b.id !== id && start <= blockEnd(b) && end >= b.start);
+  if (clash) { err.textContent = `和「${blockLabel(clash)}」日期重疊`; return; }
+  if (id) Object.assign(blocks.find(b => b.id === id), cand); else blocks.push(cand);
+  blockEdit = null;
+  save();
+}
+function deleteBlock(id) {
+  if (!confirm('確定刪除這個週期？訓練紀錄不受影響。')) return;
+  blocks = blocks.filter(b => b.id !== id);
+  blockEdit = null;
+  save();
+}
+function renderBlockReview() {
+  const today = todayStr();
+  const list = sortedBlocks().filter(b => b.start <= today).reverse();
+  const el = $('blockReview');
+  if (!list.length) { el.innerHTML = ''; return; }
+  const lifts = Object.keys(MAIN_LIFTS);
+  let html = `<table class="voltable"><thead><tr><th>週期回顧</th><th>訓練天數</th><th>平均強度</th><th>每週有效組</th>${lifts.map(k=>`<th>${MAIN_LIFTS[k].label} Δ</th>`).join('')}</tr></thead><tbody>`;
+  list.forEach(b => {
+    const t = BLOCK_TYPES[b.type];
+    const end = blockEnd(b) < today ? blockEnd(b) : today;
+    const inBlock = entries.filter(c => c.date >= b.start && c.date <= end);
+    const days = new Set(inBlock.map(c => c.date)).size;
+    const avg = avgIntensity(b.start, end);
+    const weeksDone = Math.max(1, (daysBetween(b.start, end)+1)/7);
+    let hard = 0;
+    inBlock.filter(c => c.category === 'main').forEach(c => { const r = refE1RM(c.lift, c.date); c.rows.forEach(row => hard += hardSets(row, r)); });
+    const avgCls = avg == null ? '' : avg < t.pct[0] ? 'low' : avg > t.pct[1] ? 'warn' : 'ok';
+    html += `<tr><td><span class="block-tag" style="background:${t.color}">${esc(blockLabel(b))}</span> <span class="muted">${b.start.slice(5)}–${blockEnd(b).slice(5)}</span></td>
+      <td>${days}</td><td class="${avgCls}">${avg != null ? Math.round(avg)+'%' : '—'}</td><td>${hard ? (hard/weeksDone).toFixed(1) : '—'}</td>`;
+    lifts.forEach(k => {
+      const pre = refE1RM(k, addDays(b.start, -1));
+      let best = null;
+      inBlock.forEach(c => { if (c.category==='main' && c.lift===k) { const e = cardBestE1RM(c); if (e != null && (best == null || e > best)) best = e; } });
+      if (best == null) { html += '<td class="muted">—</td>'; return; }
+      if (pre == null) { html += `<td>${best}</td>`; return; }
+      const d = round1(best - pre);
+      html += `<td>${best} <span class="${d > 0 ? 'ok' : d < 0 ? 'bad' : 'muted'}">${d > 0 ? '+' : ''}${d}</span></td>`;
+    });
+    html += '</tr>';
+  });
+  el.innerHTML = html + '</tbody></table>';
+}
 
 // 個人資料
 function syncProfileInputs() {
@@ -1270,6 +1543,7 @@ function renderAll() {
   renderTrendOptions();
   renderAccChart();
   renderVolTable();
+  renderBlocks();
   renderWeek();
   renderHeatmap();
   renderHistory();
