@@ -160,6 +160,36 @@
   .ed-save { background:#EDEAE1; color:#15171C; }
   .ed-cancel { background:#262b36; color:#EDEAE1; }
 
+  /* 輔助動作選擇器 */
+  .pick-field { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#262b36; border:none; border-radius:8px; padding:12px 14px; color:#EDEAE1; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; text-align:left; }
+  .pick-field.placeholder { color:#8B92A3; font-weight:500; }
+  .pick-field:focus-visible { outline:2px solid #8B92A3; }
+  .pick-field .chev { color:#8B92A3; font-size:12px; flex:0 0 auto; }
+  .sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; display:flex; align-items:flex-end; justify-content:center; }
+  .sheet-backdrop[hidden] { display:none; }
+  .sheet { width:100%; max-width:560px; max-height:80vh; background:#1E222B; border-radius:16px 16px 0 0; display:flex; flex-direction:column; padding:8px 16px calc(16px + env(safe-area-inset-bottom)); animation:sheetUp .2s ease-out; }
+  @keyframes sheetUp { from { transform:translateY(24px); opacity:0; } to { transform:none; opacity:1; } }
+  @media (prefers-reduced-motion: reduce) { .sheet { animation:none; } }
+  .sheet-handle { width:36px; height:4px; border-radius:2px; background:#3a4050; margin:4px auto 10px; }
+  .sheet-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .sheet-head span { font-size:15px; font-weight:700; }
+  .sheet-search { margin:0 0 12px; padding:10px 12px; }
+  .sheet-body { overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; min-height:0; }
+  .pick-sec { font-size:11px; color:#8B92A3; margin:4px 0 8px; }
+  .pick-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:16px; }
+  .pick-item { background:#262b36; border:1px solid transparent; border-radius:10px; padding:10px 12px; min-height:54px; color:#EDEAE1; font-family:inherit; text-align:left; cursor:pointer; }
+  .pick-item:hover, .pick-item:focus-visible { border-color:#8B92A3; outline:none; }
+  .pick-item.sel { border-color:#EDEAE1; }
+  .pick-item b { display:block; font-size:13.5px; line-height:1.3; overflow-wrap:anywhere; }
+  .pick-item small { display:block; font-size:11px; color:#8B92A3; margin-top:3px; }
+  .pick-new { width:100%; background:#EDEAE1; color:#15171C; border:none; border-radius:10px; padding:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:14px; text-align:left; }
+  .pick-new.secondary { background:transparent; color:#EDEAE1; border:1px dashed #3a4050; font-weight:600; }
+  @media (min-width:601px) {
+    .sheet-backdrop { align-items:center; }
+    .sheet { border-radius:16px; max-height:70vh; }
+    .pick-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  }
+
   @media (max-width:600px) {
     .wrap { padding:calc(16px + env(safe-area-inset-top)) 12px 50px; }
     .card { padding:16px; }
@@ -174,6 +204,14 @@
 </style>
 </head>
 <body>
+<div class="sheet-backdrop" id="pickSheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><span id="pickTitle">選擇輔助動作</span><button class="ghost" onclick="closePicker()">關閉</button></div>
+    <input type="search" id="pickSearch" class="sheet-search" placeholder="搜尋，或輸入新動作名稱" autocomplete="off" enterkeyhint="done">
+    <div class="sheet-body" id="pickList"></div>
+  </div>
+</div>
 <div class="wrap">
   <h1>🏋 力量曲線 POWER CURVE</h1>
   <p class="sub"><span id="syncStatus" style="color:#8B92A3;">連線中...</span></p>
@@ -186,8 +224,10 @@
     <div class="pills" id="categoryPills"></div>
     <div id="mainLiftPills" class="pills"></div>
     <div id="accessoryNameField" style="display:none; margin-bottom:14px;">
-      <input type="text" id="exerciseName" list="accNames" placeholder="動作名稱，例如：滑輪下拉" aria-label="動作名稱" autocomplete="off">
-      <datalist id="accNames"></datalist>
+      <input type="hidden" id="exerciseName">
+      <button type="button" class="pick-field placeholder" id="pickField" onclick="openPicker()" aria-haspopup="dialog">
+        <span id="pickFieldText">選擇輔助動作</span><span class="chev">▾</span>
+      </button>
     </div>
     <div class="lastpanel" id="lastPanel"></div>
     <div class="form-grid">
@@ -607,7 +647,10 @@ function renderCategoryPills() {
     d.className = 'pill small' + (category===k ? ' active' : '');
     d.style.background = category===k ? '#EDEAE1' : '#262b36';
     d.textContent = label;
-    d.onclick = () => { category = k; renderCategoryPills(); renderMainLiftPills(); renderLastPanel(); updatePreview(); };
+    d.onclick = () => {
+      category = k; renderCategoryPills(); renderMainLiftPills(); renderLastPanel(); updatePreview();
+      if (k === 'accessory' && !$('exerciseName').value) openPicker();
+    };
     el.appendChild(d);
   });
   $('mainLiftPills').style.display = category==='main' ? 'flex' : 'none';
@@ -741,7 +784,7 @@ function handleAdd() {
   const errEl = $('formError');
   if (!date) { errEl.textContent = '請選擇日期'; return; }
   if (!w || !r) { errEl.textContent = '請輸入重量與次數'; return; }
-  if (category==='accessory' && !exerciseName) { errEl.textContent = '請輸入或選擇動作名稱'; return; }
+  if (category==='accessory' && !exerciseName) { errEl.textContent = '請先選擇動作'; openPicker(); return; }
   errEl.textContent = '';
   const card = findOrCreateCard(date, category, lift, exerciseName);
   card.rows.push({
@@ -862,9 +905,89 @@ function renderE1rmChart() {
   $('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
 }
 
+// ===== 輔助動作選擇器 =====
+function accessoryStats() {
+  const m = {};
+  entries.forEach(c => {
+    if (c.category !== 'accessory' || !c.exerciseName) return;
+    const s = m[c.exerciseName] || (m[c.exerciseName] = { name: c.exerciseName, count: 0, last: '' });
+    s.count++;
+    if (c.date > s.last) s.last = c.date;
+  });
+  return Object.values(m);
+}
+function relDay(d) {
+  const n = daysBetween(d, todayStr());
+  return n <= 0 ? '今天' : n === 1 ? '昨天' : n < 30 ? `${n} 天前` : d.slice(5);
+}
+function pickItemHtml(s, cur) {
+  return `<button type="button" class="pick-item${s.name === cur ? ' sel' : ''}" data-name="${esc(s.name)}">
+    <b>${esc(s.name)}</b><small>${s.count} 次　${relDay(s.last)}</small></button>`;
+}
+function renderPickList() {
+  const q = $('pickSearch').value.trim();
+  const ql = q.toLowerCase();
+  const cur = $('exerciseName').value;
+  const all = accessoryStats();
+  let html = '';
+  if (q) {
+    const hits = all.filter(s => s.name.toLowerCase().includes(ql)).sort((a,b) => b.last.localeCompare(a.last));
+    // 有符合的就先列出既有動作，新增按鈕放後面；完全沒有才把新增放第一個
+    if (hits.length) html += `<div class="pick-grid">${hits.map(s => pickItemHtml(s, cur)).join('')}</div>`;
+    if (!all.some(s => s.name.toLowerCase() === ql)) {
+      html += `<button type="button" class="pick-new${hits.length ? ' secondary' : ''}" data-name="${esc(q)}">＋ 新增「${esc(q)}」</button>`;
+    }
+  } else if (!all.length) {
+    html = '<div class="empty">還沒有輔助動作。在上方輸入名稱，就能新增第一個。</div>';
+  } else {
+    const recent = [...all].sort((a,b) => b.last.localeCompare(a.last)).slice(0, 6);
+    const rest = all.filter(s => !recent.includes(s)).sort((a,b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-Hant'));
+    html += `<div class="pick-sec">最近練過</div><div class="pick-grid">${recent.map(s => pickItemHtml(s, cur)).join('')}</div>`;
+    if (rest.length) html += `<div class="pick-sec">其他（依次數）</div><div class="pick-grid">${rest.map(s => pickItemHtml(s, cur)).join('')}</div>`;
+  }
+  $('pickList').innerHTML = html;
+}
+let pickerReturnFocus = null;
+function openPicker() {
+  pickerReturnFocus = document.activeElement;
+  $('pickSearch').value = '';
+  renderPickList();
+  $('pickSheet').hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('pickList').scrollTop = 0;
+  // 手機不自動聚焦搜尋框，避免鍵盤一開就蓋住清單
+  if (!matchMedia('(pointer: coarse)').matches) $('pickSearch').focus();
+}
+function closePicker() {
+  $('pickSheet').hidden = true;
+  document.body.style.overflow = '';
+  if (pickerReturnFocus && pickerReturnFocus.focus) pickerReturnFocus.focus();
+}
+function selectAccessory(name) {
+  name = name.trim();
+  if (!name) return;
+  $('exerciseName').value = name;
+  $('pickFieldText').textContent = name;
+  $('pickField').classList.remove('placeholder');
+  closePicker();
+  renderLastPanel(); updatePreview();
+}
+$('pickSearch').addEventListener('input', renderPickList);
+$('pickSearch').addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const q = $('pickSearch').value.trim();
+  if (!q) return;
+  const all = accessoryStats();
+  const exact = all.find(s => s.name.toLowerCase() === q.toLowerCase());
+  selectAccessory(exact ? exact.name : q);
+});
+$('pickList').addEventListener('click', e => { const b = e.target.closest('[data-name]'); if (b) selectAccessory(b.dataset.name); });
+$('pickSheet').addEventListener('click', e => { if (e.target === $('pickSheet')) closePicker(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pickSheet').hidden) closePicker(); });
+
 function renderAccessoryDatalist() {
-  const names = [...new Set(entries.filter(e=>e.category==='accessory').map(e=>e.exerciseName))].sort();
-  $('accNames').innerHTML = names.map(n=>`<option value="${esc(n)}"></option>`).join('');
+  if (!$('pickSheet').hidden) renderPickList();
 }
 function renderTrendOptions() {
   const sel = $('trendPick');
