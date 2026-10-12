@@ -28,22 +28,23 @@
   label.field { font-size:11px; color:#8B92A3; }
   input, select { width:100%; background:#262b36; border:none; border-radius:6px; padding:8px 10px; color:#EDEAE1; margin-top:4px; font-family:inherit; font-size:13px; }
   button.add { display:flex; align-items:center; gap:6px; background:#EDEAE1; color:#15171C; border:none; border-radius:8px; padding:9px 18px; font-weight:700; font-size:13px; cursor:pointer; }
-  .preview { font-size:12px; color:#8B92A3; margin-bottom:12px; font-family:'JetBrains Mono',monospace; font-weight:700; }
+  button.ghost { background:#262b36; color:#EDEAE1; border:none; border-radius:8px; padding:7px 14px; font-size:12px; cursor:pointer; font-family:inherit; }
+  .preview { font-size:12px; color:#8B92A3; margin-bottom:12px; font-family:'JetBrains Mono',monospace; font-weight:700; line-height:1.7; }
   .error { color:#B72E3D; font-size:12px; margin-bottom:10px; }
-  .hint { font-size:11px; color:#8B92A3; margin-top:8px; }
+  .hint { font-size:11px; color:#8B92A3; margin-top:8px; line-height:1.6; }
   .empty { color:#8B92A3; font-size:13px; padding:10px 0; }
   svg text { font-family:'Inter',sans-serif; fill:#8B92A3; font-size:10px; }
   .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin-top:8px; }
   .legend span { display:flex; align-items:center; gap:5px; }
   .legend .sw { width:10px; height:10px; border-radius:2px; display:inline-block; }
 
-  .hcard { background:#262b36; border-radius:10px; padding:12px 14px; margin-bottom:10px; }
   .hcard-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px; }
   .hcard-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
   .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
-  .hcard-meta { display:flex; align-items:center; gap:12px; font-size:12px; color:#8B92A3; }
+  .hcard-meta { display:flex; align-items:center; gap:12px; font-size:12px; color:#8B92A3; flex-wrap:wrap; }
   .hcard-row { display:flex; align-items:center; justify-content:space-between; padding:5px 8px; background:#1E222B; border-radius:6px; font-size:12.5px; margin-bottom:4px; }
   .mono { font-family:'JetBrains Mono',monospace; }
+  .muted { color:#8B92A3; }
   .trash { cursor:pointer; opacity:0.55; color:#8B92A3; font-size:13px; }
   .trash:hover { opacity:1; }
   .card-trash { cursor:pointer; opacity:0.55; color:#B72E3D; font-size:12px; }
@@ -52,7 +53,7 @@
   .hist-group { margin-bottom:20px; }
   .hist-group-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; margin-bottom:8px; }
   .hist-scroll { display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; }
-  .hist-card { min-width:210px; max-width:210px; flex:0 0 auto; background:#262b36; border-radius:10px; padding:10px 12px; }
+  .hist-card { min-width:220px; max-width:220px; flex:0 0 auto; background:#262b36; border-radius:10px; padding:10px 12px; }
   .hist-card-date { font-size:12px; color:#8B92A3; margin-bottom:6px; }
   .hist-card-meta { display:flex; align-items:center; justify-content:space-between; font-size:11.5px; margin-bottom:6px; }
 
@@ -63,6 +64,59 @@
   table.voltable tbody tr:nth-child(odd) { background:#1a1d24; }
   table.voltable td.total { font-weight:700; color:#EDEAE1; }
   .table-scroll { overflow-x:auto; }
+
+  /* 上次成績面板 */
+  .lastpanel { background:#262b36; border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12.5px; }
+  .lp-head { display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:8px; color:#8B92A3; }
+  .chip { display:inline-block; background:#1E222B; border:1px solid transparent; border-radius:6px; padding:4px 8px; margin:0 6px 6px 0; font-family:'JetBrains Mono',monospace; font-size:12px; cursor:pointer; color:#EDEAE1; }
+  .chip:hover, .chip:focus-visible { border-color:#8B92A3; outline:none; }
+  .lp-older { color:#8B92A3; font-size:11.5px; margin-top:4px; line-height:1.6; }
+
+  /* 週視圖 & 熱力圖 */
+  .week-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .weekstrip { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
+  .wday { background:#262b36; border-radius:8px; padding:8px; min-height:92px; cursor:pointer; }
+  .wday.today { box-shadow:inset 0 0 0 1px #EDEAE1; }
+  .wday.rest { opacity:.5; cursor:default; }
+  .wday-h { font-size:11px; color:#8B92A3; margin-bottom:6px; display:flex; justify-content:space-between; }
+  .tag { display:block; font-size:11px; border-radius:4px; padding:2px 5px; margin-bottom:3px; color:#15171C; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .tag.acc { background:#3a4050; color:#EDEAE1; font-weight:500; }
+  .heat { display:flex; gap:3px; overflow-x:auto; padding-bottom:6px; margin-top:18px; }
+  .heat-col { display:flex; flex-direction:column; gap:3px; }
+  .heat-month { height:12px; font-size:9px; color:#8B92A3; white-space:nowrap; }
+  .heat-cell { width:13px; height:13px; border-radius:3px; background:#262b36; }
+  .heat-cell.has { cursor:pointer; }
+  .heat-cell.future { background:transparent; }
+
+  /* 依日期歷史 */
+  .day-block { background:#262b36; border-radius:10px; padding:12px 14px; margin-bottom:10px; transition:box-shadow .3s; }
+  .day-block.flash { box-shadow:0 0 0 2px #4FB477; }
+  .day-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
+  .day-title { font-size:14px; font-weight:700; }
+  .day-ex { background:#1E222B; border-radius:8px; padding:8px 10px; margin-top:8px; }
+  .day-ex .hcard-row { background:#262b36; }
+
+  /* 分析區 */
+  .subhead { font-size:13px; font-weight:700; color:#EDEAE1; margin:26px 0 10px; }
+  .subhead:first-child { margin-top:0; }
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  .kpi { background:#262b36; border-radius:10px; padding:12px 14px; }
+  .kpi-l { font-size:11px; color:#8B92A3; margin-bottom:4px; }
+  .kpi-v { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; }
+  .kpi-n { font-size:11px; margin-top:4px; line-height:1.5; }
+  .zone-row { display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center; margin-bottom:8px; font-size:12px; }
+  .zone-bar { display:flex; height:18px; border-radius:4px; overflow:hidden; background:#262b36; }
+  .zone-bar div { height:100%; }
+  .profile-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; max-width:420px; }
+  details.glossary { margin-top:22px; font-size:12px; color:#8B92A3; line-height:1.7; }
+  details.glossary summary { cursor:pointer; color:#EDEAE1; font-weight:600; }
+  .ok { color:#4FB477; } .warn { color:#D4A017; } .bad { color:#B72E3D; } .low { color:#2E6F9E; }
+
+  @media (max-width:600px) {
+    .wrap { padding:20px 12px 50px; }
+    .wday { min-height:72px; padding:5px; }
+    .tag { font-size:10px; padding:1px 3px; }
+  }
 </style>
 </head>
 <body>
@@ -82,9 +136,10 @@
       <input type="text" id="exerciseName" list="accNames" placeholder="例如：滑輪下拉" autocomplete="off">
       <datalist id="accNames"></datalist>
     </div>
+    <div class="lastpanel" id="lastPanel"></div>
     <div class="grid-inputs">
       <div><label class="field">日期</label><input type="date" id="fDate"></div>
-      <div><label class="field">重量 (kg)</label><input type="number" id="fWeight" placeholder="140"></div>
+      <div><label class="field">重量 (kg)</label><input type="number" id="fWeight" placeholder="140" step="0.5"></div>
       <div><label class="field">次數</label><input type="number" id="fReps" placeholder="3"></div>
       <div><label class="field">組數</label><input type="number" id="fSets" placeholder="1" value="1"></div>
       <div><label class="field">RPE（頂組才選，量組留空）</label>
@@ -98,12 +153,58 @@
     <div class="preview" id="preview"></div>
     <div class="error" id="formError"></div>
     <button class="add" onclick="handleAdd()">+ 加入這組</button>
-    <div class="hint">同一天、同一個動作會自動合併到同一張卡，不會另開新卡。頂組選 RPE 讓系統算 e1RM；依百分比計算的量組留空 RPE 即可。</div>
+    <div class="hint">點上方「上次成績」的任一組可直接帶入表單。只填次數＋RPE、重量留空，會依目前 e1RM 算出建議重量。<br>同一天、同一個動作會自動合併到同一張卡。頂組選 RPE 讓系統算 e1RM；依百分比計算的量組留空 RPE 即可。</div>
+  </div>
+
+  <div class="card">
+    <div class="week-nav">
+      <div class="label" style="margin-bottom:0;">訓練日曆</div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <button class="ghost" onclick="shiftWeek(-1)" aria-label="上一週">◀</button>
+        <span id="weekLabel" style="font-size:12.5px; min-width:120px; text-align:center;"></span>
+        <button class="ghost" onclick="shiftWeek(1)" aria-label="下一週">▶</button>
+        <button class="ghost" onclick="shiftWeek(0)">本週</button>
+      </div>
+    </div>
+    <div class="weekstrip" id="weekStrip"></div>
+    <div class="hint" id="weekSummary"></div>
+    <div class="heat" id="heatmap"></div>
+    <div class="hint" id="heatSummary"></div>
   </div>
 
   <div class="card">
     <div class="label">主項 e1RM 趨勢</div>
     <div id="e1rmChart"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">🔬 科學化分析</div>
+    <div class="profile-row">
+      <div><label class="field">體重 (kg)，用來算 DOTS 與體重倍數</label><input type="number" id="pBw" step="0.1" placeholder="例如 83"></div>
+      <div><label class="field">性別（DOTS 係數）</label>
+        <select id="pSex"><option value="male">男</option><option value="female">女</option></select>
+      </div>
+    </div>
+    <div id="analytics" style="margin-top:20px;"></div>
+
+    <div class="subhead">RPE 處方表：今天該上多重</div>
+    <div class="profile-row" style="margin-bottom:12px;">
+      <div><label class="field">主項</label><select id="calcLift"></select></div>
+      <div><label class="field">參考 e1RM (kg)，可手動改</label><input type="number" id="calcE1" step="0.5"></div>
+    </div>
+    <div class="table-scroll"><div id="calcTable"></div></div>
+    <div class="hint">以 RTS RPE 表換算，四捨五入到 2.5 kg。列＝次數，欄＝目標 RPE。</div>
+
+    <details class="glossary">
+      <summary>這些數字是什麼意思？</summary>
+      <p><b>目前 e1RM</b>：近 6 週內有 RPE 的頂組換算出的最高估計 1RM，比「歷史最佳」更能反映現在的狀態。</p>
+      <p><b>8 週趨勢</b>：近 56 天每次 e1RM 的線性回歸斜率（kg/週）。進階者每週 +0.3～1 kg 已算穩定進步；接近 0 或負值且持續數週，代表可能停滯或疲勞累積。</p>
+      <p><b>有效組（hard sets）</b>：RPE ≥ 7 的組，或沒填 RPE 但強度 ≥ 70% e1RM 的組。多數研究建議每個主項每週約 6～15 組有效組。</p>
+      <p><b>INOL</b>（Hristo Hristov）＝ 次數 ÷ (100 − 強度%)，衡量單次訓練的刺激量。單一動作單次訓練約 0.4～1.0 適中，&gt;1.0 偏重；每週合計約 2～3 是常見範圍。</p>
+      <p><b>ACWR</b>（急性:慢性負荷比）＝ 近 7 天總量 ÷ 近 28 天週平均。0.8～1.3 為負荷穩定區，&gt;1.5 代表短期加量過快。這個指標在研究上仍有爭議，適合當趨勢提醒，不是受傷預測器。</p>
+      <p><b>單調性 / 張力</b>（Foster）：單調性＝近 7 天每日負荷平均 ÷ 標準差，&gt;2 代表每天負荷太像、缺乏輕重變化；張力＝週總量 × 單調性。原始方法用 sRPE，這裡以訓練總量代替。</p>
+      <p><b>DOTS</b>：依體重校正的力量分數，可跨體重級別比較。約 300 為入門、400 中階、500 進階。</p>
+    </details>
   </div>
 
   <div class="card">
@@ -121,8 +222,11 @@
     <div class="hint">每個動作獨立列出總量（重量 × 次數 × 組數 加總，單位 kg）。週以週一為起始日分組。</div>
   </div>
 
-  <div class="card">
-    <div class="label">歷史紀錄</div>
+  <div class="card" id="historyCard">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <div class="label" style="margin-bottom:0;">歷史紀錄</div>
+      <div class="pills" id="histPills" style="margin-bottom:0;"></div>
+    </div>
     <div id="historyList"></div>
   </div>
 </div>
@@ -145,8 +249,17 @@ const MAIN_LIFTS = {
   deadlift:{label:'硬舉', color:'#B72E3D'},
 };
 const ACCESSORY_COLOR = '#8B92A3';
+const ZONES = [
+  {max:60, label:'<60%', color:'#3a4050'},
+  {max:70, label:'60–70%', color:'#4FB477'},
+  {max:80, label:'70–80%', color:'#2E6F9E'},
+  {max:90, label:'80–90%', color:'#D4A017'},
+  {max:Infinity, label:'≥90%', color:'#B72E3D'},
+];
+const WD_SUN = ['日','一','二','三','四','五','六'];
+const WD_MON = ['一','二','三','四','五','六','日'];
 
-// ===== Firebase 設定：換成你自己專案的 config =====
+// ===== Firebase 設定 =====
 const firebaseConfig = {
   apiKey: "AIzaSyCqYNDIkdcL4z8C831J6Y2kopfinKjSziE",
   authDomain: "power-curve-bfb71.firebaseapp.com",
@@ -161,21 +274,47 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const provider = new firebase.auth.GoogleAuthProvider();
 let docRef = null;
-let entries = []; // array of "cards": {id, date, category, lift, exerciseName, rows:[{id,weight,reps,sets,rpe}]}
+let entries = []; // cards: {id, date, category, lift, exerciseName, rows:[{id,weight,reps,sets,rpe}]}
+let profile = { bodyweight: null, sex: 'male' };
 let category = 'main';
 let lift = 'squat';
 let volView = 'week';
+let histView = 'day';
+let histLimit = 14;
+let weekOffset = 0;
+let calcTouched = false;
 let saveTimer = null;
 
+// ===== 工具函式 =====
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+// 用本地時間格式化日期（原本 toISOString 會變成 UTC，台灣早上 8 點前會被算成前一天）
+function fmtDate(d) { return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+function todayStr() { return fmtDate(new Date()); }
+function parseDate(s) { return new Date(s+'T00:00:00'); }
+function addDays(s, n) { const d = parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); }
+function daysBetween(a, b) { return Math.round((parseDate(b)-parseDate(a))/86400000); }
+function getMonday(s) {
+  const d = parseDate(s);
+  const day = d.getDay();
+  d.setDate(d.getDate() + ((day===0?-6:1)-day));
+  return fmtDate(d);
+}
+function wd(s) { return WD_SUN[parseDate(s).getDay()]; }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function round1(x) { return Math.round(x*10)/10; }
+function roundTo(x, step) { return Math.round(x/step)*step; }
+function fmtNum(n) { return Math.round(n).toLocaleString(); }
+
 function setSyncStatus(text, color) {
-  const el = document.getElementById('syncStatus');
+  const el = $('syncStatus');
   el.textContent = text;
   el.style.color = color || '#8B92A3';
 }
 function renderAuthBar(user) {
-  const el = document.getElementById('authBar');
+  const el = $('authBar');
   if (user) {
-    const name = user.email || user.displayName || '已登入';
+    const name = esc(user.email || user.displayName || '已登入');
     el.innerHTML = `<span style="color:#8B92A3;font-size:13px;">已登入：${name}</span> <span class="pill small" style="background:#262b36;margin-left:8px;display:inline-block;" onclick="logout()">登出</span>`;
   } else {
     el.innerHTML = `<span class="pill small" style="background:#EDEAE1;color:#15171C;display:inline-block;" onclick="loginWithGoogle()">使用 Google 登入（跨裝置同步）</span>`;
@@ -183,7 +322,7 @@ function renderAuthBar(user) {
 }
 function loginWithGoogle() {
   auth.signInWithPopup(provider).catch(() => {
-    auth.signInWithRedirect(provider); // popup 被封鎖時（常見於手機瀏覽器）改用跳轉登入
+    auth.signInWithRedirect(provider);
   });
 }
 function logout() { auth.signOut(); }
@@ -194,7 +333,7 @@ auth.onAuthStateChanged(async (user) => {
     docRef = null;
     setSyncStatus('未登入（僅本機儲存）', '#8B92A3');
     loadLocalFallback();
-    renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderAll();
+    refreshUI();
     return;
   }
   docRef = db.collection('powerCurveEntries').doc(user.uid);
@@ -202,9 +341,10 @@ auth.onAuthStateChanged(async (user) => {
     const snap = await docRef.get();
     if (snap.exists && snap.data().entries) {
       entries = migrateLegacyEntries(snap.data().entries);
+      const p = snap.data().profile;
+      profile = p ? { bodyweight: p.bodyweight ?? null, sex: p.sex || 'male' } : loadLocalProfile();
       setSyncStatus('已同步', '#4FB477');
     } else {
-      // 這個 Google 帳號第一次登入：如果本機有資料（例如先前用匿名模式留下的），自動上傳一次
       loadLocalFallback();
       setSyncStatus('已同步', '#4FB477');
       if (entries.length) save();
@@ -213,24 +353,30 @@ auth.onAuthStateChanged(async (user) => {
     setSyncStatus('連線失敗，改用本機儲存', '#B72E3D');
     loadLocalFallback();
   }
-  renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderAll();
+  refreshUI();
 });
 
+function loadLocalProfile() {
+  try { return Object.assign({ bodyweight:null, sex:'male' }, JSON.parse(localStorage.getItem('pl_profile') || '{}')); }
+  catch { return { bodyweight:null, sex:'male' }; }
+}
 function loadLocalFallback() {
-  const raw = JSON.parse(localStorage.getItem('pl_entries') || '[]');
+  let raw = [];
+  try { raw = JSON.parse(localStorage.getItem('pl_entries') || '[]'); } catch { raw = []; }
   entries = migrateLegacyEntries(raw);
+  profile = loadLocalProfile();
 }
 
-function calcE1RM(weight, reps, rpe) {
+// ===== e1RM 與強度計算 =====
+function pctFor(reps, rpe) {
+  const t = RPE_TABLE[rpe];
+  if (!t) return null;
   const r = Math.min(Math.max(Math.round(reps),1),10);
-  const table = RPE_TABLE[rpe] || RPE_TABLE[8];
-  return weight / (table[r-1]/100);
+  return t[r-1];
 }
-function getMonday(dateStr) {
-  const d = new Date(dateStr+'T00:00:00');
-  const day = d.getDay();
-  d.setDate(d.getDate() + ((day===0?-6:1)-day));
-  return d.toISOString().slice(0,10);
+function calcE1RM(weight, reps, rpe) {
+  const p = pctFor(reps, rpe) ?? pctFor(reps, 8);
+  return weight / (p/100);
 }
 function rowVolume(row) { return row.weight * row.reps * row.sets; }
 function cardVolume(card) { return card.rows.reduce((s,r)=>s+rowVolume(r), 0); }
@@ -238,16 +384,81 @@ function cardBestE1RM(card) {
   if (card.category !== 'main') return null;
   const withRpe = card.rows.filter(r => r.rpe != null);
   if (!withRpe.length) return null;
-  const best = withRpe.reduce((a,b) => calcE1RM(b.weight,b.reps,b.rpe) > calcE1RM(a.weight,a.reps,a.rpe) ? b : a);
-  return Math.round(calcE1RM(best.weight,best.reps,best.rpe)*10)/10;
+  return round1(Math.max(...withRpe.map(r => calcE1RM(r.weight, r.reps, r.rpe))));
 }
 function exerciseKeyOf(card) { return card.category==='main' ? card.lift : card.exerciseName; }
 function exerciseLabelOf(card) { return card.category==='main' ? MAIN_LIFTS[card.lift].label : card.exerciseName; }
 function exerciseColorOf(card) { return card.category==='main' ? MAIN_LIFTS[card.lift].color : ACCESSORY_COLOR; }
+function liftCards(k) { return entries.filter(c => c.category==='main' && c.lift===k); }
 
-// 舊版資料是「一筆一列」（沒有 rows 陣列），這裡自動偵測並合併成新的卡片格式
+// 某天的「目前 e1RM」：該日往前 windowDays 天內最佳；窗內沒資料就用更早最近的一次
+function refE1RM(k, upto, windowDays = 42) {
+  upto = upto || todayStr();
+  const from = addDays(upto, -windowDays);
+  let best = null, fallback = null, fbDate = '';
+  liftCards(k).forEach(c => {
+    if (c.date > upto) return;
+    const e = cardBestE1RM(c);
+    if (e == null) return;
+    if (c.date > from) { if (best == null || e > best) best = e; }
+    else if (c.date > fbDate) { fbDate = c.date; fallback = e; }
+  });
+  return best ?? fallback;
+}
+function allTimeBest(k) {
+  let best = null;
+  liftCards(k).forEach(c => {
+    const e = cardBestE1RM(c);
+    if (e != null && (!best || e > best.val)) best = { val: e, date: c.date };
+  });
+  return best;
+}
+// N 下最佳重量（做得到更多下也算）
+function repBest(k, n, excludeDate) {
+  let best = null;
+  liftCards(k).forEach(c => {
+    if (excludeDate && c.date === excludeDate) return;
+    c.rows.forEach(r => {
+      if (r.reps >= n && (!best || r.weight > best.weight)) best = { weight: r.weight, date: c.date };
+    });
+  });
+  return best;
+}
+function rowInol(row, ref) {
+  if (!ref) return 0;
+  const p = Math.min(row.weight/ref*100, 99);
+  return row.reps * row.sets / (100 - p);
+}
+function hardSets(row, ref) {
+  if (row.rpe != null) return row.rpe >= 7 ? row.sets : 0;
+  return (ref && row.weight/ref >= 0.70) ? row.sets : 0;
+}
+function cardInol(card) {
+  if (card.category !== 'main') return null;
+  const ref = refE1RM(card.lift, card.date);
+  if (!ref) return null;
+  return card.rows.reduce((s,r)=>s+rowInol(r, ref), 0);
+}
+function zoneIdx(p) { return ZONES.findIndex(z => p < z.max); }
+function linSlope(pts) {
+  const n = pts.length; if (n < 2) return null;
+  const mx = pts.reduce((s,p)=>s+p.x,0)/n, my = pts.reduce((s,p)=>s+p.y,0)/n;
+  let num = 0, den = 0;
+  pts.forEach(p => { num += (p.x-mx)*(p.y-my); den += (p.x-mx)**2; });
+  return den ? num/den : null;
+}
+function dots(total, bw, sex) {
+  const c = sex === 'female'
+    ? [-57.96288, 13.6175032, -0.1126655495, 0.0005158568, -0.0000010706]
+    : [-307.75076, 24.0900756, -0.1918759221, 0.0007391293, -0.000001093];
+  const b = sex === 'female' ? Math.min(Math.max(bw,40),150) : Math.min(Math.max(bw,40),210);
+  const den = c[0] + c[1]*b + c[2]*b**2 + c[3]*b**3 + c[4]*b**4;
+  return total * 500 / den;
+}
+
+// 舊版資料是「一筆一列」，自動合併成卡片格式
 function migrateLegacyEntries(raw) {
-  if (!Array.isArray(raw) || raw.length === 0) return raw || [];
+  if (!Array.isArray(raw) || raw.length === 0) return Array.isArray(raw) ? raw : [];
   const needsMigration = raw.some(e => !Array.isArray(e.rows));
   if (!needsMigration) return raw;
   const migrated = [];
@@ -289,12 +500,13 @@ function save() {
   entries.sort((a,b)=>a.date.localeCompare(b.date));
   renderAll();
   localStorage.setItem('pl_entries', JSON.stringify(entries));
+  localStorage.setItem('pl_profile', JSON.stringify(profile));
   if (!docRef) return;
   setSyncStatus('同步中...', '#8B92A3');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
     try {
-      await docRef.set({ entries, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await docRef.set({ entries, profile, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
       setSyncStatus('已同步', '#4FB477');
     } catch (e) {
       setSyncStatus('同步失敗，稍後會再試', '#B72E3D');
@@ -302,24 +514,25 @@ function save() {
   }, 500);
 }
 
-document.getElementById('fDate').value = new Date().toISOString().slice(0,10);
+$('fDate').value = todayStr();
 
+// ===== 表單 =====
 function renderCategoryPills() {
-  const el = document.getElementById('categoryPills');
+  const el = $('categoryPills');
   el.innerHTML = '';
   [['main','主項'],['accessory','輔助動作']].forEach(([k,label]) => {
     const d = document.createElement('div');
     d.className = 'pill small' + (category===k ? ' active' : '');
     d.style.background = category===k ? '#EDEAE1' : '#262b36';
     d.textContent = label;
-    d.onclick = () => { category = k; renderCategoryPills(); renderMainLiftPills(); updatePreview(); };
+    d.onclick = () => { category = k; renderCategoryPills(); renderMainLiftPills(); renderLastPanel(); updatePreview(); };
     el.appendChild(d);
   });
-  document.getElementById('mainLiftPills').style.display = category==='main' ? 'flex' : 'none';
-  document.getElementById('accessoryNameField').style.display = category==='accessory' ? 'block' : 'none';
+  $('mainLiftPills').style.display = category==='main' ? 'flex' : 'none';
+  $('accessoryNameField').style.display = category==='accessory' ? 'block' : 'none';
 }
 function renderMainLiftPills() {
-  const el = document.getElementById('mainLiftPills');
+  const el = $('mainLiftPills');
   el.innerHTML = '';
   Object.keys(MAIN_LIFTS).forEach(k => {
     const d = document.createElement('div');
@@ -327,36 +540,127 @@ function renderMainLiftPills() {
     d.className = 'pill' + (active?' active':'');
     d.style.background = active ? MAIN_LIFTS[k].color : '#262b36';
     d.textContent = MAIN_LIFTS[k].label;
-    d.onclick = () => { lift = k; renderMainLiftPills(); updatePreview(); };
+    d.onclick = () => { lift = k; renderMainLiftPills(); renderLastPanel(); updatePreview(); };
     el.appendChild(d);
   });
 }
-function updatePreview() {
-  const w = parseFloat(document.getElementById('fWeight').value);
-  const r = parseInt(document.getElementById('fReps').value);
-  const s = parseInt(document.getElementById('fSets').value) || 1;
-  const rpeRaw = document.getElementById('fRpe').value;
-  const el = document.getElementById('preview');
-  if (w && r) {
-    if (category === 'main' && rpeRaw !== '') {
-      el.textContent = '預估 e1RM：' + (Math.round(calcE1RM(w,r,rpeRaw)*10)/10) + ' kg';
-      el.style.color = MAIN_LIFTS[lift].color;
-    } else {
-      el.textContent = '這組訓練量：' + (w*r*s).toFixed(0) + ' kg' + (category==='main' ? '（無 RPE，不計入 e1RM）' : '');
-      el.style.color = ACCESSORY_COLOR;
-    }
-  } else { el.textContent = ''; }
+
+function rowText(r) { return `${r.weight}kg×${r.reps}×${r.sets}組${r.rpe!=null ? ' @'+r.rpe : ''}`; }
+
+function currentExercise() {
+  if (category === 'main') return { cat:'main', key:lift, label:MAIN_LIFTS[lift].label, color:MAIN_LIFTS[lift].color };
+  const n = $('exerciseName').value.trim();
+  return n ? { cat:'accessory', key:n, label:n, color:ACCESSORY_COLOR } : null;
 }
-['fWeight','fReps','fSets','fRpe'].forEach(id => document.getElementById(id).addEventListener('input', updatePreview));
+function cardsOfExercise(ex) {
+  return entries.filter(c => c.category===ex.cat && (ex.cat==='main' ? c.lift===ex.key : c.exerciseName===ex.key));
+}
+
+// ===== 1. 上次成績 =====
+function renderLastPanel() {
+  const el = $('lastPanel');
+  const ex = currentExercise();
+  if (!ex) { el.innerHTML = '<span class="muted">輸入動作名稱後，這裡會顯示上次的成績。</span>'; return; }
+  const date = $('fDate').value || todayStr();
+  const all = cardsOfExercise(ex).sort((a,b)=>b.date.localeCompare(a.date));
+  const todayCard = all.find(c => c.date === date);
+  const prev = all.filter(c => c.date < date);
+  let html = '';
+  if (!prev.length && !todayCard) {
+    html = `<span class="muted">${esc(ex.label)} 還沒有更早的紀錄，這次會是第一筆。</span>`;
+  }
+  if (prev.length) {
+    const last = prev[0];
+    const gap = daysBetween(last.date, date);
+    const e1 = cardBestE1RM(last);
+    html += `<div class="lp-head">
+      <span><b style="color:${ex.color}">上次 ${esc(ex.label)}</b>　${last.date}（${wd(last.date)}），${gap} 天前</span>
+      <span class="mono">${e1!=null ? 'e1RM '+e1+'kg　' : ''}量 ${fmtNum(cardVolume(last))}kg</span>
+    </div>`;
+    html += `<div>${last.rows.map(r => `<span class="chip" tabindex="0" title="帶入表單"
+      data-w="${r.weight}" data-r="${r.reps}" data-s="${r.sets}" data-rpe="${r.rpe ?? ''}">${rowText(r)}</span>`).join('')}</div>`;
+    if (prev.length > 1) {
+      html += `<div class="lp-older">${prev.slice(1,3).map(c => {
+        const e = cardBestE1RM(c);
+        return `${c.date.slice(5)}（${wd(c.date)}）${c.rows.map(rowText).join('、')}${e!=null ? '　e1RM '+e : ''}`;
+      }).join('<br>')}</div>`;
+    }
+  }
+  if (todayCard) {
+    html += `<div class="lp-older" style="color:#EDEAE1;margin-top:8px;">這天已記錄：${todayCard.rows.map(rowText).join('、')}</div>`;
+  }
+  if (ex.cat === 'main') {
+    const ref = refE1RM(lift, date);
+    const best = allTimeBest(lift);
+    html += `<div class="lp-older">目前 e1RM（近 6 週）${ref ? round1(ref)+'kg' : '—'}　歷史最佳 ${best ? best.val+'kg（'+best.date+'）' : '—'}</div>`;
+  }
+  el.innerHTML = html;
+}
+function fillFromChip(c) {
+  $('fWeight').value = c.dataset.w;
+  $('fReps').value = c.dataset.r;
+  $('fSets').value = c.dataset.s;
+  $('fRpe').value = c.dataset.rpe || '';
+  updatePreview();
+}
+$('lastPanel').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) fillFromChip(c); });
+$('lastPanel').addEventListener('keydown', e => { const c = e.target.closest('.chip'); if (c && (e.key==='Enter'||e.key===' ')) { e.preventDefault(); fillFromChip(c); } });
+
+function updatePreview() {
+  const w = parseFloat($('fWeight').value);
+  const r = parseInt($('fReps').value);
+  const s = parseInt($('fSets').value) || 1;
+  const rpeRaw = $('fRpe').value;
+  const date = $('fDate').value || todayStr();
+  const el = $('preview');
+  const lines = [];
+  if (category === 'main') {
+    const ref = refE1RM(lift, date);
+    if (!w && r && rpeRaw !== '' && ref) {
+      lines.push(`建議重量：依目前 e1RM ${round1(ref)}kg，${r} 下 @${rpeRaw} ≈ ${roundTo(ref*pctFor(r,rpeRaw)/100, 2.5)} kg`);
+    }
+    if (w && r) {
+      if (rpeRaw !== '') {
+        const e1 = round1(calcE1RM(w, r, rpeRaw));
+        const best = allTimeBest(lift);
+        lines.push(`預估 e1RM：${e1} kg${best && e1 > best.val ? '　🔥 新的 e1RM 紀錄' : ''}`);
+      } else {
+        lines.push(`這組訓練量：${fmtNum(w*r*s)} kg（無 RPE，不計入 e1RM）`);
+      }
+      if (ref) {
+        const p = w/ref*100;
+        lines.push(`強度 ${Math.round(p)}% e1RM　INOL ${(r*s/(100-Math.min(p,99))).toFixed(2)}`);
+      }
+      const rb = repBest(lift, r, date);
+      if (rb && w > rb.weight) lines.push(`🏅 ${r} 下以上的重量紀錄（之前最佳 ${rb.weight}kg，${rb.date}）`);
+    }
+  } else if (w && r) {
+    lines.push(`這組訓練量：${fmtNum(w*r*s)} kg`);
+    const ex = currentExercise();
+    if (ex) {
+      const prev = cardsOfExercise(ex).filter(c => c.date < date).sort((a,b)=>b.date.localeCompare(a.date))[0];
+      if (prev) {
+        const top = Math.max(...prev.rows.map(x=>x.weight));
+        if (w > top) lines.push(`比上次最重 ${top}kg 多 ${round1(w-top)}kg`);
+      }
+    }
+  }
+  el.innerHTML = lines.map(esc).join('<br>');
+  el.style.color = category==='main' ? MAIN_LIFTS[lift].color : ACCESSORY_COLOR;
+}
+['fWeight','fReps','fSets','fRpe'].forEach(id => $(id).addEventListener('input', updatePreview));
+$('fDate').addEventListener('change', () => { renderLastPanel(); updatePreview(); });
+$('exerciseName').addEventListener('input', () => { renderLastPanel(); updatePreview(); });
 
 function handleAdd() {
-  const w = parseFloat(document.getElementById('fWeight').value);
-  const r = parseInt(document.getElementById('fReps').value);
-  const s = parseInt(document.getElementById('fSets').value) || 1;
-  const rpeRaw = document.getElementById('fRpe').value;
-  const date = document.getElementById('fDate').value;
-  const exerciseName = document.getElementById('exerciseName').value.trim();
-  const errEl = document.getElementById('formError');
+  const w = parseFloat($('fWeight').value);
+  const r = parseInt($('fReps').value);
+  const s = parseInt($('fSets').value) || 1;
+  const rpeRaw = $('fRpe').value;
+  const date = $('fDate').value;
+  const exerciseName = $('exerciseName').value.trim();
+  const errEl = $('formError');
+  if (!date) { errEl.textContent = '請選擇日期'; return; }
   if (!w || !r) { errEl.textContent = '請輸入重量與次數'; return; }
   if (category==='accessory' && !exerciseName) { errEl.textContent = '請輸入或選擇動作名稱'; return; }
   errEl.textContent = '';
@@ -365,11 +669,10 @@ function handleAdd() {
     id: Date.now().toString()+Math.random().toString(36).slice(2),
     weight:w, reps:r, sets:s, rpe: rpeRaw==='' ? null : parseFloat(rpeRaw)
   });
-  document.getElementById('fWeight').value='';
-  document.getElementById('fReps').value='';
-  document.getElementById('fRpe').value='';
-  document.getElementById('fSets').value='1';
-  updatePreview();
+  $('fWeight').value='';
+  $('fReps').value='';
+  $('fRpe').value='';
+  $('fSets').value='1';
   save();
 }
 function deleteRow(cardId, rowId) {
@@ -380,69 +683,53 @@ function deleteRow(cardId, rowId) {
   save();
 }
 function deleteCard(cardId) {
+  if (!confirm('確定刪除這張卡的所有組數？')) return;
   entries = entries.filter(c=>c.id!==cardId);
   save();
 }
 
+// ===== PR =====
 function renderPRs() {
-  const el = document.getElementById('prGrid');
+  const el = $('prGrid');
   el.innerHTML = '';
+  let total = 0, complete = true;
   Object.keys(MAIN_LIFTS).forEach(k => {
-    const cards = entries.filter(c=>c.category==='main' && c.lift===k);
-    let best = null, bestCard = null;
-    cards.forEach(c => {
-      const e1 = cardBestE1RM(c);
-      if (e1 != null && (best==null || e1>best)) { best = e1; bestCard = c; }
-    });
+    const best = allTimeBest(k);
+    if (best) total += best.val; else complete = false;
     const div = document.createElement('div');
     div.className = 'pr-card';
     div.style.borderLeft = '4px solid ' + MAIN_LIFTS[k].color;
-    div.innerHTML = `<div style="color:#8B92A3;font-size:12px;margin-bottom:6px;">🏆 ${MAIN_LIFTS[k].label} 目前最高 e1RM</div>
-      <div class="pr-num">${best!=null ? best+' kg' : '—'}</div>
-      ${bestCard ? `<div class="pr-sub">${bestCard.date}</div>` : ''}`;
+    div.innerHTML = `<div style="color:#8B92A3;font-size:12px;margin-bottom:6px;">🏆 ${MAIN_LIFTS[k].label} 最高 e1RM</div>
+      <div class="pr-num">${best ? best.val+' kg' : '—'}</div>
+      ${best ? `<div class="pr-sub">${best.date}</div>` : ''}`;
     el.appendChild(div);
   });
+  const div = document.createElement('div');
+  div.className = 'pr-card';
+  div.style.borderLeft = '4px solid #EDEAE1';
+  const bw = profile.bodyweight;
+  const d = complete && bw ? round1(dots(total, bw, profile.sex)) : null;
+  div.innerHTML = `<div style="color:#8B92A3;font-size:12px;margin-bottom:6px;">Σ 三項總和</div>
+    <div class="pr-num">${complete ? round1(total)+' kg' : '—'}</div>
+    <div class="pr-sub">${d!=null ? 'DOTS '+d : (complete ? '填入體重即可算 DOTS' : '三項都有 RPE 紀錄後顯示')}</div>`;
+  el.appendChild(div);
 }
 
-function svgLineChart(containerId, labels, seriesMap, colorMap, dashedKeys) {
-  const el = document.getElementById(containerId);
-  if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  const W=800,H=260,padL=40,padR=10,padT=10,padB=30;
-  const allVals = Object.values(seriesMap).flat().filter(v=>v!=null);
-  if (!allVals.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  const min = Math.min(...allVals)*0.95, max = Math.max(...allVals)*1.05;
-  const x = i => padL + (labels.length<=1?0:(i/(labels.length-1))*(W-padL-padR));
-  const y = v => padT + (1-(v-min)/(max-min||1))*(H-padT-padB);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
-  svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
-  labels.forEach((d,i) => { if (i%Math.ceil(labels.length/8||1)===0) svg += `<text x="${x(i)}" y="${H-10}" text-anchor="middle">${d.slice(5)}</text>`; });
-  Object.keys(seriesMap).forEach(key => {
-    const vals = seriesMap[key];
-    const pts = vals.map((v,i)=>({i,v})).filter(p=>p.v!=null);
-    let path = '';
-    pts.forEach((p,idx) => { path += (idx===0?'M':'L')+x(p.i)+','+y(p.v)+' '; });
-    const dash = (dashedKeys && dashedKeys.includes(key)) ? ' stroke-dasharray="5 4"' : '';
-    svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"${dash}/>`;
-    pts.forEach(p => svg += `<circle cx="${x(p.i)}" cy="${y(p.v)}" r="3" fill="${colorMap[key]}"/>`);
-  });
-  svg += `</svg>`;
-  el.innerHTML = svg;
-}
-
+// ===== 圖表 =====
 function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
-  const el = document.getElementById(containerId);
+  const el = $(containerId);
   if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
   const W=800,H=260,padL=48,padR=10,padT=14,padB=30;
+  const allA = Object.values(seriesA).flat().filter(v=>v!=null);
   const allB = Object.values(seriesB).flat().filter(v=>v!=null);
-  const minA = 0, maxA = 300; // 重量軸固定 0-300 公斤，刻度為 5 的倍數
+  const minA = 0;
+  const maxA = Math.max(300, Math.ceil((allA.length ? Math.max(...allA) : 0)/25)*25);
   const tickStep = 25;
   const minB = allB.length ? Math.min(...allB)*0.9 : 0, maxB = allB.length ? Math.max(...allB)*1.1 : 1;
   const x = i => padL + (labels.length<=1?0:(i/(labels.length-1))*(W-padL-padR));
   const yA = v => padT + (1-(v-minA)/(maxA-minA||1))*(H-padT-padB);
   const yB = v => padT + (1-(v-minB)/(maxB-minB||1))*(H-padT-padB);
   let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
-
-  // Y 軸格線 + 重量刻度（固定 0-300kg，每 25kg 一格，皆為 5 的倍數）
   for (let val=minA; val<=maxA; val+=tickStep) {
     const yy = yA(val);
     svg += `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#20242c" stroke-width="1"/>`;
@@ -450,16 +737,14 @@ function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap) {
   }
   svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
   labels.forEach((d,i) => { if (i%Math.ceil(labels.length/8||1)===0) svg += `<text x="${x(i)}" y="${H-10}" text-anchor="middle">${d.slice(5)}</text>`; });
-
   function drawSeries(seriesMap, yFn, dashed) {
     Object.keys(seriesMap).forEach(key => {
-      const vals = seriesMap[key];
-      const pts = vals.map((v,i)=>({i,v})).filter(p=>p.v!=null);
+      const pts = seriesMap[key].map((v,i)=>({i,v})).filter(p=>p.v!=null);
       if (!pts.length) return;
       let path = '';
       pts.forEach((p,idx) => { path += (idx===0?'M':'L')+x(p.i)+','+yFn(p.v)+' '; });
       svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"${dashed?' stroke-dasharray="5 4"':''}/>`;
-      pts.forEach(p => svg += `<circle cx="${x(p.i)}" cy="${yFn(p.v)}" r="3" fill="${colorMap[key]}"${dashed?' opacity="0.6"':''}/>`);
+      pts.forEach(p => svg += `<circle cx="${x(p.i)}" cy="${yFn(p.v)}" r="3" fill="${colorMap[key]}"${dashed?' opacity="0.6"':''}><title>${labels[p.i]}：${p.v}kg</title></circle>`);
     });
   }
   drawSeries(seriesA, yA, false);
@@ -481,25 +766,24 @@ function renderE1rmChart() {
   });
   svgDualLineChart('e1rmChart', dates, e1rmSeries, {}, colorMap);
   const legend = Object.keys(MAIN_LIFTS).map(k=>`<span><span class="sw" style="background:${MAIN_LIFTS[k].color}"></span>${MAIN_LIFTS[k].label}</span>`).join('');
-  document.getElementById('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
+  $('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
 }
 
 function renderAccessoryDatalist() {
   const names = [...new Set(entries.filter(e=>e.category==='accessory').map(e=>e.exerciseName))].sort();
-  document.getElementById('accNames').innerHTML = names.map(n=>`<option value="${n}"></option>`).join('');
+  $('accNames').innerHTML = names.map(n=>`<option value="${esc(n)}"></option>`).join('');
 }
-
 function renderTrendOptions() {
-  const sel = document.getElementById('trendPick');
+  const sel = $('trendPick');
   const cur = sel.value;
   const mainOpts = Object.keys(MAIN_LIFTS).map(k=>`<option value="main:${k}">${MAIN_LIFTS[k].label}</option>`).join('');
   const accNames = [...new Set(entries.filter(e=>e.category==='accessory').map(e=>e.exerciseName))].sort();
-  const accOpts = accNames.map(n=>`<option value="acc:${n}">${n}</option>`).join('');
+  const accOpts = accNames.map(n=>`<option value="acc:${esc(n)}">${esc(n)}</option>`).join('');
   sel.innerHTML = '<option value="">選擇動作</option>' + mainOpts + accOpts;
   sel.value = [...sel.options].some(o=>o.value===cur) ? cur : '';
 }
 function svgVolumeChart(containerId, dates, values, color) {
-  const el = document.getElementById(containerId);
+  const el = $(containerId);
   if (!dates.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
   const W=800,H=290,padL=44,padR=10,padT=14,padB=54;
   const min = Math.min(...values)*0.9, max = Math.max(...values)*1.1;
@@ -510,18 +794,20 @@ function svgVolumeChart(containerId, dates, values, color) {
   let path = '';
   dates.forEach((d,i) => { path += (i===0?'M':'L')+x(i)+','+y(values[i])+' '; });
   svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
+  const step = Math.ceil(dates.length/12);
   dates.forEach((d,i) => {
-    svg += `<circle cx="${x(i)}" cy="${y(values[i])}" r="3" fill="${color}"/>`;
-    svg += `<text x="${x(i)}" y="${H-padB+16}" text-anchor="middle">${d.slice(5)}</text>`;
-    svg += `<text x="${x(i)}" y="${H-padB+30}" text-anchor="middle" style="fill:${color};font-weight:700;">${Math.round(values[i])}kg</text>`;
+    svg += `<circle cx="${x(i)}" cy="${y(values[i])}" r="3" fill="${color}"><title>${d}：${Math.round(values[i])}kg</title></circle>`;
+    if (i % step === 0 || i === dates.length-1) {
+      svg += `<text x="${x(i)}" y="${H-padB+16}" text-anchor="middle">${d.slice(5)}</text>`;
+      svg += `<text x="${x(i)}" y="${H-padB+30}" text-anchor="middle" style="fill:${color};font-weight:700;">${Math.round(values[i])}kg</text>`;
+    }
   });
   svg += `</svg>`;
   el.innerHTML = svg;
 }
-
 function renderAccChart() {
-  const pick = document.getElementById('trendPick').value;
-  const el = document.getElementById('accChart');
+  const pick = $('trendPick').value;
+  const el = $('accChart');
   if (!pick) { el.innerHTML = '<div class="empty">選一個動作查看總量趨勢。</div>'; return; }
   const [kind, key] = pick.split(/:(.+)/);
   const cards = entries.filter(c => kind==='main' ? (c.category==='main' && c.lift===key) : (c.category==='accessory' && c.exerciseName===key))
@@ -530,10 +816,11 @@ function renderAccChart() {
   const color = kind==='main' ? MAIN_LIFTS[key].color : ACCESSORY_COLOR;
   svgVolumeChart('accChart', cards.map(c=>c.date), cards.map(c=>cardVolume(c)), color);
 }
-document.getElementById('trendPick').addEventListener('change', renderAccChart);
+$('trendPick').addEventListener('change', renderAccChart);
 
+// ===== 總量表 =====
 function renderVolPills() {
-  const el = document.getElementById('volPills');
+  const el = $('volPills');
   el.innerHTML = '';
   [['day','日'],['week','週'],['month','月']].forEach(([k,label]) => {
     const d = document.createElement('div');
@@ -546,9 +833,7 @@ function renderVolPills() {
 }
 function renderVolTable() {
   const keyFn = volView==='day' ? d=>d : volView==='week' ? getMonday : d=>d.slice(0,7);
-  const matrix = {}; // exerciseKey -> {period: volume}
-  const labels = {}; // exerciseKey -> display label
-  const order = []; // exerciseKey insertion order (main first)
+  const matrix = {}, labels = {}, order = [];
   Object.keys(MAIN_LIFTS).forEach(k => { matrix[k]={}; labels[k]=MAIN_LIFTS[k].label; order.push(k); });
   entries.forEach(card => {
     const key = exerciseKeyOf(card);
@@ -557,61 +842,415 @@ function renderVolTable() {
     matrix[key][period] = (matrix[key][period]||0) + cardVolume(card);
   });
   const periods = [...new Set(entries.map(c=>keyFn(c.date)))].sort();
-  const el = document.getElementById('volTable');
+  const el = $('volTable');
   if (!periods.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  let html = '<table class="voltable"><thead><tr><th>動作</th>' + periods.map(p=>`<th>${p.slice(5)}</th>`).join('') + '<th>總計</th></tr></thead><tbody>';
+  const head = p => volView==='day' ? `${p.slice(5)}（${wd(p)}）` : volView==='week' ? `${p.slice(5)} 週` : p;
+  let html = '<table class="voltable"><thead><tr><th>動作</th>' + periods.map(p=>`<th>${head(p)}</th>`).join('') + '<th>總計</th></tr></thead><tbody>';
   order.forEach(key => {
     const rowVals = periods.map(p => matrix[key][p] || 0);
     const total = rowVals.reduce((a,b)=>a+b,0);
-    if (total === 0 && !MAIN_LIFTS[key]) return; // skip empty accessory rows
-    html += `<tr><td>${labels[key]}</td>` + rowVals.map(v=>`<td>${v?v.toFixed(0):'—'}</td>`).join('') + `<td class="total">${total.toFixed(0)}</td></tr>`;
+    if (total === 0 && !MAIN_LIFTS[key]) return;
+    html += `<tr><td>${esc(labels[key])}</td>` + rowVals.map(v=>`<td>${v?fmtNum(v):'—'}</td>`).join('') + `<td class="total">${fmtNum(total)}</td></tr>`;
   });
   html += '</tbody></table>';
   el.innerHTML = html;
 }
 
-function renderHistory() {
-  const el = document.getElementById('historyList');
-  if (!entries.length) { el.innerHTML = '<div class="empty">尚無資料</div>'; return; }
+// ===== 2. 以天為單位：週視圖 + 熱力圖 =====
+function cardOrder(c) { return c.category==='main' ? Object.keys(MAIN_LIFTS).indexOf(c.lift) : 10; }
+function dayCards(date) { return entries.filter(c=>c.date===date).sort((a,b)=>cardOrder(a)-cardOrder(b)); }
+function dailyVolumeMap() {
+  const m = {};
+  entries.forEach(c => { m[c.date] = (m[c.date]||0) + cardVolume(c); });
+  return m;
+}
+function shiftWeek(n) { weekOffset = n === 0 ? 0 : weekOffset + n; renderWeek(); }
+function renderWeek() {
+  const today = todayStr();
+  const mon = addDays(getMonday(today), weekOffset*7);
+  const sun = addDays(mon, 6);
+  const prefix = weekOffset===0 ? '本週 ' : weekOffset===-1 ? '上週 ' : '';
+  $('weekLabel').textContent = `${prefix}${mon.slice(5)} – ${sun.slice(5)}`;
+  let trained = 0, vol = 0;
+  $('weekStrip').innerHTML = [0,1,2,3,4,5,6].map(i => {
+    const d = addDays(mon, i);
+    const cs = dayCards(d);
+    if (cs.length) trained++;
+    cs.forEach(c => vol += cardVolume(c));
+    const tags = cs.map(c => c.category==='main'
+      ? `<span class="tag" style="background:${MAIN_LIFTS[c.lift].color}">${MAIN_LIFTS[c.lift].label}</span>`
+      : `<span class="tag acc">${esc(c.exerciseName)}</span>`).join('');
+    const empty = d > today ? '' : '<span style="font-size:11px;color:#8B92A3">休息</span>';
+    return `<div class="wday${d===today?' today':''}${cs.length?'':' rest'}" data-date="${d}" ${cs.length?'tabindex="0" role="button"':''}>
+      <div class="wday-h"><span>週${WD_MON[i]}</span><span>${d.slice(8)}</span></div>${tags || empty}</div>`;
+  }).join('');
+  $('weekSummary').textContent = `這週訓練 ${trained} 天，總量 ${fmtNum(vol)} kg。點任一天可跳到當天的詳細紀錄。`;
+}
+$('weekStrip').addEventListener('click', e => {
+  const d = e.target.closest('.wday');
+  if (d && !d.classList.contains('rest')) jumpToDay(d.dataset.date);
+});
+$('weekStrip').addEventListener('keydown', e => {
+  const d = e.target.closest('.wday');
+  if (d && (e.key==='Enter'||e.key===' ') && !d.classList.contains('rest')) { e.preventDefault(); jumpToDay(d.dataset.date); }
+});
 
-  const groups = {}; // exerciseKey -> {label, color, cards:[]}
-  const order = [];
+function renderHeatmap() {
+  const today = todayStr();
+  const WEEKS = 20;
+  const start = addDays(getMonday(today), -7*(WEEKS-1));
+  const vm = dailyVolumeMap();
+  const max = Math.max(1, ...Object.values(vm));
+  let html = '', lastMonth = '';
+  for (let w = 0; w < WEEKS; w++) {
+    const mon = addDays(start, w*7);
+    const month = mon.slice(5,7);
+    html += `<div class="heat-col"><div class="heat-month">${month!==lastMonth ? parseInt(month)+'月' : ''}</div>`;
+    lastMonth = month;
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(mon, i);
+      if (d > today) { html += `<div class="heat-cell future"></div>`; continue; }
+      const v = vm[d] || 0;
+      const names = dayCards(d).map(exerciseLabelOf).join('、');
+      const bg = v ? `background:rgba(79,180,119,${(0.25+0.75*v/max).toFixed(2)})` : '';
+      html += `<div class="heat-cell${v?' has':''}" style="${bg}" data-date="${d}" title="${d}（${wd(d)}）${v ? esc(names)+'，'+fmtNum(v)+'kg' : '休息'}"></div>`;
+    }
+    html += '</div>';
+  }
+  $('heatmap').innerHTML = html;
+  const from28 = addDays(today, -28);
+  const days28 = Object.keys(vm).filter(d => d > from28 && d <= today).length;
+  $('heatSummary').textContent = `近 20 週訓練日曆，顏色越深代表當天總量越高。近 28 天訓練 ${days28} 天，平均每週 ${(days28/4).toFixed(1)} 天。`;
+}
+$('heatmap').addEventListener('click', e => { const c = e.target.closest('.heat-cell.has'); if (c) jumpToDay(c.dataset.date); });
+
+function sortedDaysDesc() { return [...new Set(entries.map(c=>c.date))].sort().reverse(); }
+function jumpToDay(date) {
+  histView = 'day';
+  renderHistPills();
+  const idx = sortedDaysDesc().indexOf(date);
+  if (idx < 0) return;
+  if (idx >= histLimit) histLimit = idx + 1;
+  renderHistory();
+  const el = $('day-'+date);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 1600);
+  }
+}
+
+// ===== 歷史紀錄 =====
+function renderHistPills() {
+  const el = $('histPills');
+  el.innerHTML = '';
+  [['day','依日期'],['lift','依動作']].forEach(([k,label]) => {
+    const d = document.createElement('div');
+    d.className = 'pill small' + (histView===k ? ' active' : '');
+    d.style.background = histView===k ? '#EDEAE1' : '#262b36';
+    d.textContent = label;
+    d.onclick = () => { histView = k; renderHistPills(); renderHistory(); };
+    el.appendChild(d);
+  });
+}
+function rowHtml(card, r, ref) {
+  const pct = ref ? ` <span class="muted">${Math.round(r.weight/ref*100)}%</span>` : '';
+  return `<div class="hcard-row"><span class="mono">${rowText(r)}${pct}</span><span class="trash" title="刪除這組" onclick="deleteRow('${card.id}','${r.id}')">✕</span></div>`;
+}
+function renderHistory() {
+  const el = $('historyList');
+  if (!entries.length) { el.innerHTML = '<div class="empty">還沒有紀錄，從上方「新增紀錄」加入第一組。</div>'; return; }
+  if (histView === 'day') renderHistoryByDay(el); else renderHistoryByLift(el);
+}
+function renderHistoryByDay(el) {
+  const days = sortedDaysDesc();
+  const shown = days.slice(0, histLimit);
+  let html = shown.map((date, idx) => {
+    const cards = dayCards(date);
+    const vol = cards.reduce((s,c)=>s+cardVolume(c),0);
+    const prevDay = days[idx+1];
+    const rest = prevDay ? daysBetween(prevDay, date) - 1 : null;
+    const dotsHtml = cards.map(c => `<span class="dot" style="background:${exerciseColorOf(c)}"></span>`).join(' ');
+    const body = cards.map(card => {
+      const color = exerciseColorOf(card);
+      const e1 = cardBestE1RM(card);
+      const inol = cardInol(card);
+      const ref = card.category==='main' ? refE1RM(card.lift, card.date) : null;
+      return `<div class="day-ex">
+        <div class="hcard-head">
+          <div class="hcard-title"><span class="dot" style="background:${color}"></span>${esc(exerciseLabelOf(card))}</div>
+          <div class="hcard-meta">
+            ${e1!=null ? `<span class="mono" style="color:${color};font-weight:700;">e1RM ${e1}kg</span>` : ''}
+            ${inol ? `<span class="mono" title="INOL：單次訓練刺激量">INOL ${inol.toFixed(2)}</span>` : ''}
+            <span class="mono">量 ${fmtNum(cardVolume(card))}kg</span>
+            <span class="card-trash" onclick="deleteCard('${card.id}')">刪除</span>
+          </div>
+        </div>
+        ${card.rows.map(r => rowHtml(card, r, ref)).join('')}
+      </div>`;
+    }).join('');
+    return `<div class="day-block" id="day-${date}">
+      <div class="day-head">
+        <div class="day-title">${date}（${wd(date)}）　${dotsHtml}</div>
+        <div class="hcard-meta"><span>${cards.length} 個動作</span><span class="mono">總量 ${fmtNum(vol)}kg</span>${rest!=null ? `<span>距上次練 ${rest} 天休息</span>` : ''}</div>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+  if (days.length > histLimit) {
+    html += `<button class="ghost" style="width:100%;padding:10px;" onclick="histLimit+=14;renderHistory();">顯示更早的 ${Math.min(14, days.length-histLimit)} 天（還有 ${days.length-histLimit} 天）</button>`;
+  }
+  el.innerHTML = html;
+}
+function renderHistoryByLift(el) {
+  const groups = {}, order = [];
   Object.keys(MAIN_LIFTS).forEach(k => { groups[k] = { label: MAIN_LIFTS[k].label, color: MAIN_LIFTS[k].color, cards: [] }; order.push(k); });
   entries.forEach(card => {
     const key = exerciseKeyOf(card);
     if (!groups[key]) { groups[key] = { label: exerciseLabelOf(card), color: exerciseColorOf(card), cards: [] }; order.push(key); }
     groups[key].cards.push(card);
   });
-
   el.innerHTML = order.filter(key => groups[key].cards.length).map(key => {
     const g = groups[key];
     const cards = [...g.cards].sort((a,b)=>b.date.localeCompare(a.date));
     const cardsHtml = cards.map(card => {
       const e1 = cardBestE1RM(card);
-      const vol = cardVolume(card);
-      const rowsHtml = card.rows.map(r => `
-        <div class="hcard-row">
-          <span class="mono">${r.weight}kg×${r.reps}×${r.sets}組${r.rpe!=null ? ' @'+r.rpe : ''}</span>
-          <span class="trash" onclick="deleteRow('${card.id}','${r.id}')">✕</span>
-        </div>`).join('');
+      const ref = card.category==='main' ? refE1RM(card.lift, card.date) : null;
       return `
         <div class="hist-card">
-          <div class="hist-card-date">${card.date}</div>
+          <div class="hist-card-date">${card.date}（${wd(card.date)}）</div>
           <div class="hist-card-meta">
             ${e1!=null ? `<span class="mono" style="color:${g.color};font-weight:700;">e1RM ${e1}kg</span>` : '<span></span>'}
             <span class="card-trash" onclick="deleteCard('${card.id}')">刪除</span>
           </div>
-          ${rowsHtml}
-          <div class="mono" style="color:#8B92A3; font-size:11.5px; margin-top:6px;">量 ${vol.toFixed(0)}kg</div>
+          ${card.rows.map(r => rowHtml(card, r, ref)).join('')}
+          <div class="mono" style="color:#8B92A3; font-size:11.5px; margin-top:6px;">量 ${fmtNum(cardVolume(card))}kg</div>
         </div>`;
     }).join('');
     return `
       <div class="hist-group">
-        <div class="hist-group-title"><span class="dot" style="background:${g.color}"></span>${g.label}</div>
+        <div class="hist-group-title"><span class="dot" style="background:${g.color}"></span>${esc(g.label)}</div>
         <div class="hist-scroll">${cardsHtml}</div>
       </div>`;
   }).join('');
 }
+
+// ===== 3. 科學化分析 =====
+function trainingWeeksSpan(today) {
+  if (!entries.length) return 1;
+  const first = entries.reduce((m,c)=>c.date<m?c.date:m, entries[0].date);
+  return Math.min(4, Math.max(1, (daysBetween(first, today)+1)/7));
+}
+function liftStats(k, today) {
+  const cards = liftCards(k);
+  const ref = refE1RM(k, today);
+  const best = allTimeBest(k);
+  const from56 = addDays(today, -56);
+  const tp = cards.filter(c=>c.date>from56 && c.date<=today)
+    .map(c=>({d:c.date, y:cardBestE1RM(c)})).filter(p=>p.y!=null)
+    .sort((a,b)=>a.d.localeCompare(b.d));
+  let slope = null;
+  if (tp.length >= 3) {
+    const s = linSlope(tp.map(p=>({x:daysBetween(tp[0].d,p.d), y:p.y})));
+    if (s != null) slope = s*7;
+  }
+  const from28 = addDays(today, -28);
+  const recent = cards.filter(c=>c.date>from28 && c.date<=today);
+  let hard = 0, inol = 0, nReps = 0, pctSum = 0;
+  const zones = ZONES.map(()=>0);
+  recent.forEach(c => {
+    const r = refE1RM(k, c.date);
+    c.rows.forEach(row => {
+      hard += hardSets(row, r);
+      inol += rowInol(row, r);
+      if (r) {
+        const n = row.reps*row.sets, p = row.weight/r*100;
+        nReps += n; pctSum += n*p; zones[zoneIdx(p)] += n;
+      }
+    });
+  });
+  const withE1 = cards.filter(c=>c.date<=today && cardBestE1RM(c)!=null).sort((a,b)=>b.date.localeCompare(a.date));
+  const lastE1 = withE1.length ? cardBestE1RM(withE1[0]) : null;
+  return { ref, best, slope, hard, inol, avgPct: nReps ? pctSum/nReps : null, zones, nReps,
+           sessions: recent.length, lastE1, lastDate: withE1.length ? withE1[0].date : null };
+}
+
+function renderAnalytics() {
+  const el = $('analytics');
+  const today = todayStr();
+  const lifts = Object.keys(MAIN_LIFTS);
+  if (!entries.length) { el.innerHTML = '<div class="empty">累積幾次有 RPE 的頂組後，這裡會出現分析。</div>'; return; }
+  const weeks = trainingWeeksSpan(today);
+  const S = {};
+  lifts.forEach(k => S[k] = liftStats(k, today));
+  const bw = profile.bodyweight;
+  let html = '';
+
+  // 能力總覽
+  html += `<div class="subhead">能力總覽</div><div class="table-scroll"><table class="voltable"><thead><tr>
+    <th>主項</th><th>目前 e1RM</th><th>歷史最佳</th><th>體重倍數</th><th>8 週趨勢</th><th>距上次 PR</th><th>每週次數</th><th>每週有效組</th><th>平均強度</th><th>每週 INOL</th>
+  </tr></thead><tbody>`;
+  lifts.forEach(k => {
+    const s = S[k];
+    const slopeTxt = s.slope==null ? '—' : `<span class="${s.slope>0.2?'ok':s.slope<-0.2?'bad':'warn'}">${s.slope>0?'+':''}${s.slope.toFixed(1)} kg/週</span>`;
+    const prDays = s.best ? daysBetween(s.best.date, today) : null;
+    const hw = s.hard/weeks;
+    const hardCls = !s.hard ? '' : hw < 6 ? 'low' : hw > 15 ? 'warn' : 'ok';
+    const inolW = s.inol/weeks;
+    const inolCls = !s.inol ? '' : inolW < 1.5 ? 'low' : inolW > 3.5 ? 'warn' : 'ok';
+    html += `<tr>
+      <td><span class="dot" style="background:${MAIN_LIFTS[k].color}"></span> ${MAIN_LIFTS[k].label}</td>
+      <td class="total">${s.ref ? round1(s.ref)+'kg' : '—'}</td>
+      <td>${s.best ? s.best.val+'kg' : '—'}</td>
+      <td>${s.ref && bw ? (s.ref/bw).toFixed(2)+'×' : '—'}</td>
+      <td>${slopeTxt}</td>
+      <td>${prDays!=null ? prDays+' 天' : '—'}</td>
+      <td>${(s.sessions/weeks).toFixed(1)}</td>
+      <td class="${hardCls}">${s.hard ? hw.toFixed(1) : '—'}</td>
+      <td>${s.avgPct ? Math.round(s.avgPct)+'%' : '—'}</td>
+      <td class="${inolCls}">${s.inol ? inolW.toFixed(2) : '—'}</td>
+    </tr>`;
+  });
+  const refsOk = lifts.every(k => S[k].ref);
+  const curTotal = refsOk ? lifts.reduce((a,k)=>a+S[k].ref,0) : null;
+  html += `</tbody></table></div>
+    <div class="hint">每週數字取近 4 週平均（紀錄不足 4 週時按實際週數）。目前三項總和 ${curTotal ? round1(curTotal)+'kg' : '—'}${curTotal && bw ? '，DOTS '+round1(dots(curTotal,bw,profile.sex))+'，體重倍數 '+(curTotal/bw).toFixed(2)+'×' : ''}。</div>`;
+
+  // 疲勞警示
+  const warns = [];
+  lifts.forEach(k => {
+    const s = S[k];
+    if (s.lastE1 && s.ref && s.lastE1 < s.ref*0.95) warns.push(`${MAIN_LIFTS[k].label}最近一次（${s.lastDate}）e1RM ${s.lastE1}kg，比近 6 週最佳低 ${Math.round((1-s.lastE1/s.ref)*100)}%，可能疲勞累積或狀態不佳。`);
+    if (s.slope != null && s.slope < -0.5) warns.push(`${MAIN_LIFTS[k].label}近 8 週 e1RM 呈下降趨勢，可考慮安排減量週。`);
+    if (s.best && daysBetween(s.best.date, today) > 56 && s.sessions) warns.push(`${MAIN_LIFTS[k].label}已超過 8 週沒有新的 e1RM 紀錄，可檢視課表變化或強度安排。`);
+  });
+
+  // 負荷管理
+  const vm = dailyVolumeMap();
+  const sumRange = (from, to) => Object.entries(vm).filter(([d])=>d>from && d<=to).reduce((s,[,v])=>s+v,0);
+  const acute = sumRange(addDays(today,-7), today);
+  const chronic = sumRange(addDays(today,-28), today)/4;
+  const acwr = chronic ? acute/chronic : null;
+  const loads = [6,5,4,3,2,1,0].map(i => vm[addDays(today,-i)] || 0);
+  const mean = loads.reduce((a,b)=>a+b,0)/7;
+  const sd = Math.sqrt(loads.reduce((s,v)=>s+(v-mean)**2,0)/7);
+  const monotony = sd ? mean/sd : null;
+  const strain = monotony ? acute*monotony : null;
+  let acwrCls = '', acwrNote = '近 28 天的資料不足';
+  if (acwr != null) {
+    if (acwr < 0.8) { acwrCls='low'; acwrNote='負荷低於平常，減量或恢復期'; }
+    else if (acwr <= 1.3) { acwrCls='ok'; acwrNote='負荷穩定，在適應區間'; }
+    else if (acwr <= 1.5) { acwrCls='warn'; acwrNote='加量偏快，留意恢復'; }
+    else { acwrCls='bad'; acwrNote='短期負荷急升，建議降低'; }
+  }
+  const span = trainingWeeksSpan(today);
+  if (acwr != null && span < 4) acwrNote += '（紀錄未滿 4 週，僅供參考）';
+  html += `<div class="subhead">負荷管理</div><div class="kpi-grid">
+    <div class="kpi"><div class="kpi-l">ACWR 急慢性負荷比</div><div class="kpi-v ${acwrCls}">${acwr!=null ? acwr.toFixed(2) : '—'}</div><div class="kpi-n muted">${acwrNote}</div></div>
+    <div class="kpi"><div class="kpi-l">近 7 天總量</div><div class="kpi-v">${fmtNum(acute)}</div><div class="kpi-n muted">近 28 天週平均 ${fmtNum(chronic)} kg</div></div>
+    <div class="kpi"><div class="kpi-l">單調性</div><div class="kpi-v ${monotony!=null && monotony>2 ? 'warn' : ''}">${monotony!=null ? monotony.toFixed(2) : '—'}</div><div class="kpi-n muted">${monotony==null ? '近 7 天資料不足' : monotony>2 ? '每天負荷太接近，建議拉開輕重日' : '輕重日有區隔'}</div></div>
+    <div class="kpi"><div class="kpi-l">訓練張力</div><div class="kpi-v">${strain!=null ? fmtNum(strain) : '—'}</div><div class="kpi-n muted">週總量 × 單調性，跟自己過去比</div></div>
+  </div>`;
+  if (warns.length) html += `<div class="hint warn" style="margin-top:12px;">${warns.map(w=>'⚠ '+esc(w)).join('<br>')}</div>`;
+
+  // 強度區間
+  html += `<div class="subhead">強度區間分布（近 4 週，依次數計算）</div>`;
+  lifts.forEach(k => {
+    const s = S[k];
+    const bar = s.nReps ? ZONES.map((z,i) => s.zones[i] ? `<div style="width:${s.zones[i]/s.nReps*100}%;background:${z.color}" title="${z.label}：${s.zones[i]} 下（${Math.round(s.zones[i]/s.nReps*100)}%）"></div>` : '').join('') : '';
+    html += `<div class="zone-row"><span>${MAIN_LIFTS[k].label}</span><div class="zone-bar">${bar}</div></div>`;
+  });
+  html += `<div class="legend">${ZONES.map(z=>`<span><span class="sw" style="background:${z.color}"></span>${z.label}</span>`).join('')}</div>
+    <div class="hint">力量期通常以 80% 以上為主、70–80% 為輔；肌肥大或累積期則多落在 65–80%。滑過色塊可看實際次數。</div>`;
+
+  // 每週組數 / INOL
+  const monNow = getMonday(today);
+  const wks = [7,6,5,4,3,2,1,0].map(i => addDays(monNow, -7*i));
+  html += `<div class="subhead">每週變化（近 8 週）</div><div class="table-scroll"><table class="voltable"><thead><tr><th>主項</th>${wks.map(w=>`<th>${w.slice(5)}</th>`).join('')}</tr></thead><tbody>`;
+  lifts.forEach(k => {
+    html += `<tr><td><span class="dot" style="background:${MAIN_LIFTS[k].color}"></span> ${MAIN_LIFTS[k].label}</td>`;
+    wks.forEach(w => {
+      const end = addDays(w, 6);
+      const cs = liftCards(k).filter(c=>c.date>=w && c.date<=end);
+      if (!cs.length) { html += '<td class="muted">—</td>'; return; }
+      let hard = 0, inol = 0, bestE = null;
+      cs.forEach(c => {
+        const r = refE1RM(k, c.date);
+        c.rows.forEach(row => { hard += hardSets(row, r); inol += rowInol(row, r); });
+        const e = cardBestE1RM(c);
+        if (e != null && (bestE == null || e > bestE)) bestE = e;
+      });
+      html += `<td style="line-height:1.5;"><span class="mono" style="color:${MAIN_LIFTS[k].color};font-weight:700;">${bestE!=null ? bestE : '·'}</span><br><span class="muted">${hard} 組 · ${inol.toFixed(1)}</span></td>`;
+    });
+    html += '</tr>';
+  });
+  html += `</tbody></table></div><div class="hint">每格：週最佳 e1RM（kg）／有效組數 · INOL。</div>`;
+
+  // Rep PR
+  html += `<div class="subhead">次數紀錄（N 下以上能做到的最重重量）</div><div class="table-scroll"><table class="voltable"><thead><tr><th>主項</th>${[1,2,3,4,5,6,8,10].map(n=>`<th>${n}RM</th>`).join('')}</tr></thead><tbody>`;
+  lifts.forEach(k => {
+    html += `<tr><td><span class="dot" style="background:${MAIN_LIFTS[k].color}"></span> ${MAIN_LIFTS[k].label}</td>`;
+    [1,2,3,4,5,6,8,10].forEach(n => {
+      const b = repBest(k, n);
+      html += b ? `<td title="${b.date}">${b.weight}</td>` : '<td class="muted">—</td>';
+    });
+    html += '</tr>';
+  });
+  html += `</tbody></table></div>`;
+
+  // 力量比例
+  if (S.squat.ref && (S.bench.ref || S.deadlift.ref)) {
+    const ratio = (a, lo, hi) => {
+      const cls = a < lo ? 'low' : a > hi ? 'warn' : 'ok';
+      const txt = a < lo ? '偏低' : a > hi ? '偏高' : '常見範圍內';
+      return `<span class="${cls}">${Math.round(a*100)}%（${txt}）</span>`;
+    };
+    html += `<div class="subhead">力量比例（以深蹲為 100%）</div><div class="kpi-grid">`;
+    if (S.bench.ref) html += `<div class="kpi"><div class="kpi-l">臥推 / 深蹲</div><div class="kpi-v">${ratio(S.bench.ref/S.squat.ref, 0.60, 0.75)}</div><div class="kpi-n muted">常見約 60–75%</div></div>`;
+    if (S.deadlift.ref) html += `<div class="kpi"><div class="kpi-l">硬舉 / 深蹲</div><div class="kpi-v">${ratio(S.deadlift.ref/S.squat.ref, 1.05, 1.25)}</div><div class="kpi-n muted">常見約 105–125%</div></div>`;
+    html += `</div><div class="hint">這是經驗範圍，臂長、腿長等槓桿差異會讓個人比例合理地偏離。持續偏離時可當作弱項的參考。</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// RPE 處方表
+function renderCalcLiftOptions() {
+  const sel = $('calcLift');
+  if (!sel.options.length) {
+    sel.innerHTML = Object.keys(MAIN_LIFTS).map(k=>`<option value="${k}">${MAIN_LIFTS[k].label}</option>`).join('');
+  }
+  if (!calcTouched) {
+    const ref = refE1RM(sel.value, todayStr());
+    $('calcE1').value = ref ? round1(ref) : '';
+  }
+}
+function renderCalc() {
+  const e1 = parseFloat($('calcE1').value);
+  const el = $('calcTable');
+  if (!e1) { el.innerHTML = '<div class="empty">這個主項還沒有 e1RM，先記錄一組有 RPE 的頂組，或手動輸入。</div>'; return; }
+  const rpes = [6,7,7.5,8,8.5,9,9.5,10];
+  const color = MAIN_LIFTS[$('calcLift').value].color;
+  let html = `<table class="voltable"><thead><tr><th>次數</th>${rpes.map(r=>`<th>@${r}</th>`).join('')}</tr></thead><tbody>`;
+  for (let reps = 1; reps <= 10; reps++) {
+    html += `<tr><td>${reps} 下</td>${rpes.map(r => {
+      const w = roundTo(e1*pctFor(reps,r)/100, 2.5);
+      const strong = (r===8 && reps<=5) ? `style="color:${color};font-weight:700;"` : '';
+      return `<td class="mono" ${strong}>${w}</td>`;
+    }).join('')}</tr>`;
+  }
+  el.innerHTML = html + '</tbody></table>';
+}
+$('calcLift').addEventListener('change', () => { calcTouched = false; renderCalcLiftOptions(); renderCalc(); });
+$('calcE1').addEventListener('input', () => { calcTouched = true; renderCalc(); });
+
+// 個人資料
+function syncProfileInputs() {
+  $('pBw').value = profile.bodyweight ?? '';
+  $('pSex').value = profile.sex || 'male';
+}
+$('pBw').addEventListener('change', () => { const v = parseFloat($('pBw').value); profile.bodyweight = v > 0 ? v : null; save(); });
+$('pSex').addEventListener('change', () => { profile.sex = $('pSex').value; save(); });
 
 function renderAll() {
   renderPRs();
@@ -620,16 +1259,25 @@ function renderAll() {
   renderTrendOptions();
   renderAccChart();
   renderVolTable();
+  renderWeek();
+  renderHeatmap();
   renderHistory();
+  renderAnalytics();
+  renderCalcLiftOptions();
+  renderCalc();
+  renderLastPanel();
+  updatePreview();
+}
+function refreshUI() {
+  syncProfileInputs();
+  renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderHistPills();
+  renderAll();
 }
 
-renderCategoryPills();
-renderMainLiftPills();
-renderVolPills();
 renderAuthBar(null);
 setSyncStatus('連線中...', '#8B92A3');
 loadLocalFallback();
-renderAll();
+refreshUI();
 </script>
 </body>
 </html>
