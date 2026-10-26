@@ -76,7 +76,7 @@ input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); bor
 @keyframes lv { 0% { transform:scale(.3); } 25% { transform:scale(1.2); } 40%,80% { transform:scale(1); opacity:1; } 100% { opacity:0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 
-.atk { display:block; width:100%; margin:14px 0; height:96px; border:3px solid var(--line); border-radius:10px; background:linear-gradient(#e04848,#a01828);
+.atk { display:block; width:100%; margin:8px 0 12px; height:88px; border:3px solid var(--line); border-radius:10px; background:linear-gradient(#e04848,#a01828);
   color:#fff; font:inherit; font-size:34px; letter-spacing:6px; cursor:pointer; box-shadow:0 0 0 3px var(--bg), 0 7px 0 3px #5a0c16; touch-action:manipulation; user-select:none; -webkit-user-select:none; }
 .atk:active { transform:translateY(6px); box-shadow:0 0 0 3px var(--bg), 0 1px 0 3px #5a0c16; }
 .atk small { display:block; font-size:13px; letter-spacing:0; opacity:.9; }
@@ -107,7 +107,7 @@ input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); bor
 .setcount b { font-size:30px; color:var(--gold); font-weight:400; }
 .donesets { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:13px; color:var(--dim); margin-top:4px; }
 .wIn { width:110px; margin:0; text-align:center; font-size:24px; color:var(--gold); padding:4px; }
-.endset { display:block; width:100%; height:84px; margin:0 0 14px; border:3px solid var(--line); border-radius:10px; background:linear-gradient(#58d858,#288838);
+.endset { display:block; width:100%; height:76px; margin:0 0 6px; border:3px solid var(--line); border-radius:10px; background:linear-gradient(#58d858,#288838);
   color:#05060f; font:inherit; font-size:28px; cursor:pointer; box-shadow:0 0 0 3px var(--bg), 0 7px 0 3px #145018; }
 .endset:active { transform:translateY(6px); box-shadow:0 0 0 3px var(--bg), 0 1px 0 3px #145018; }
 .endset small { display:block; font-size:14px; }
@@ -641,6 +641,8 @@ function renderBattle() {
        <div class="fighter" id="heroF">${heroSprite(profile.sex, sum, 84, profile.equip, myJobKey())}</div>
        <div class="fighter" id="monF">${sprite(B.sk, 120)}</div>
      </div>` +
+    `<button class="atk" id="atk">${(e=>!e.wt?'👊 出拳':{sword:'⚔ 揮劍',axe:'🪓 劈斧',spear:'➶ 突刺',hammer:'🔨 重錘'}[e.type])(equipOf(sum, profile.sex, profile.equip, myJobKey()))}<small id="atkSub">${B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次'}</small></button>` +
+    `<button class="endset" id="endBtn" ${B.reps?'':'disabled'}>結束這一組<small id="endSub">${B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先攻擊再結束'}</small></button>` +
     win('', `<div class="setcount"><span>第 <b>${done+1}</b> 組</span><span class="dim">今天已完成 ${done} 組</span></div>
       ${t ? `<div class="donesets">${t.rows.map((r,i)=>`<span>${i+1}. ${r.weight}×${r.reps}${r.sets>1?'×'+r.sets:''}${r.rpe!=null?'@'+r.rpe:''}</span>`).join('')}</div>` : ''}`) +
     win('', `<div class="msg" id="msg"></div>`) +
@@ -652,8 +654,6 @@ function renderBattle() {
         <span class="dim">kg</span><button data-w="2.5">＋</button></div></div>
       <div class="param"><span>RPE</span><div class="chips">${RPE_SKILLS.map(s=>`<button data-rpe="${s.v}" class="${String(s.v)===String(B.rpe)?'on':''}">${s.v===''?'—':s.v}</button>`).join('')}</div></div>
       <div class="param"><span style="font-size:13px">同重量<br>組數</span><div class="step"><button data-s="-1">−</button><b id="setsB">${B.sets}</b><button data-s="1">＋</button></div></div>`) +
-    `<button class="atk" id="atk">${(e=>!e.wt?'👊 出拳':{sword:'⚔ 揮劍',axe:'🪓 劈斧',spear:'➶ 突刺',hammer:'🔨 重錘'}[e.type])(equipOf(sum, profile.sex, profile.equip, myJobKey()))}<small id="atkSub">${B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次'}</small></button>` +
-    `<button class="endset" id="endBtn" ${B.reps?'':'disabled'}>結束這一組<small id="endSub">${B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先攻擊再結束'}</small></button>` +
     win('', `<div class="cmds"><button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
       <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`);
   $('atk').addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
