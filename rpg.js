@@ -164,4 +164,199 @@
   const origRender = window.renderAll;
   window.renderAll = function () { origRender.apply(this, arguments); renderCard(); };
   renderCard();
+
+  // =====================================================
+  // ===== 戰鬥模式：每一組都是一場可操作的戰鬥 =====
+  // =====================================================
+  const MONSTERS = {
+    squat:    { icon:'🗿', name:'岩石巨像' },
+    bench:    { icon:'🐉', name:'熔岩幼龍' },
+    deadlift: { icon:'👹', name:'深淵鬼王' },
+    acc:      { icon:'🐺', name:'荒野狼群' },
+  };
+  document.head.insertAdjacentHTML('beforeend', `<style>
+  .bt-open { width:100%; margin-top:10px; background:#2a2618; color:#D4A017; border:1px solid #D4A017; border-radius:8px;
+    padding:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; }
+  .bt { position:fixed; inset:0; z-index:65; background:radial-gradient(circle at 50% 30%,#2a2230,#0e0f13 70%);
+    display:flex; flex-direction:column; padding:calc(14px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+    user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+  .bt[hidden] { display:none; }
+  .bt-bar { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:#8B92A3; }
+  .bt-x { background:none; border:none; color:#8B92A3; font-size:22px; cursor:pointer; }
+  .bt-mon { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; position:relative; min-height:200px; }
+  .bt-name { font-weight:700; font-size:15px; margin-bottom:6px; }
+  .bt-hp { width:min(320px,80%); height:12px; background:#15171C; border-radius:6px; overflow:hidden; box-shadow:0 0 0 1px #3a4050; }
+  .bt-hp div { height:100%; background:linear-gradient(90deg,#B72E3D,#E07A3F); transition:width .25s; }
+  .bt-hpt { font-family:'JetBrains Mono',monospace; font-size:12px; color:#8B92A3; margin-top:4px; }
+  .bt-sprite { font-size:110px; line-height:1; margin-top:18px; transition:transform .1s, filter .1s; }
+  .bt-sprite.hit { transform:translate(6px,-4px) rotate(4deg) scale(.95); filter:brightness(2.2) saturate(0); }
+  .bt-sprite.dead { transform:scale(0) rotate(40deg); opacity:0; transition:transform .6s, opacity .6s; }
+  .bt-dmg { position:absolute; font-family:'Bebas Neue',sans-serif; font-size:34px; color:#EDEAE1; pointer-events:none;
+    text-shadow:0 2px 0 #000; animation:btFloat .8s ease-out forwards; }
+  .bt-dmg.crit { color:#D4A017; font-size:48px; }
+  @keyframes btFloat { from { transform:translateY(0) scale(1.3); opacity:1; } to { transform:translateY(-70px) scale(1); opacity:0; } }
+  .bt.shake { animation:btShake .25s; }
+  @keyframes btShake { 25% { transform:translateX(-6px); } 75% { transform:translateX(6px); } }
+  .bt-panel { background:#1E222B; border-radius:14px; padding:14px; }
+  .bt-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:12px; }
+  .bt-row label { font-size:12px; color:#8B92A3; width:44px; }
+  .bt-step { display:flex; align-items:center; gap:6px; flex:1; justify-content:flex-end; }
+  .bt-step button { width:44px; height:40px; border:none; border-radius:8px; background:#262b36; color:#EDEAE1; font-size:16px; font-weight:700; cursor:pointer; }
+  .bt-step b { font-family:'JetBrains Mono',monospace; font-size:24px; min-width:84px; text-align:center; }
+  .bt-rpe { display:flex; gap:4px; flex:1; justify-content:flex-end; flex-wrap:wrap; }
+  .bt-rpe button { min-width:38px; height:34px; border:none; border-radius:6px; background:#262b36; color:#8B92A3; font-family:'JetBrains Mono',monospace; font-weight:700; cursor:pointer; }
+  .bt-rpe button.on { background:#D4A017; color:#15171C; }
+  .bt-atk { width:100%; height:84px; border:none; border-radius:14px; background:#B72E3D; color:#fff; font-family:'Bebas Neue',sans-serif;
+    font-size:34px; letter-spacing:2px; cursor:pointer; box-shadow:0 6px 0 #6e1a24; transition:transform .05s, box-shadow .05s; }
+  .bt-atk:active { transform:translateY(5px); box-shadow:0 1px 0 #6e1a24; }
+  .bt-atk small { display:block; font-family:Inter,sans-serif; font-size:12px; letter-spacing:0; opacity:.85; }
+  .bt-done { width:100%; margin-top:10px; height:50px; border:none; border-radius:12px; background:#EDEAE1; color:#15171C; font-size:16px; font-weight:700; cursor:pointer; }
+  .bt-done:disabled { opacity:.35; }
+  .bt-rest { position:absolute; inset:0; background:rgba(14,15,19,.94); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; z-index:2; }
+  .bt-rest[hidden] { display:none; }
+  .bt-ring { width:200px; height:200px; }
+  .bt-ring text { font-family:'JetBrains Mono',monospace; fill:#EDEAE1; font-size:34px; font-weight:700; }
+  .bt-rest-btns { display:flex; gap:8px; }
+  .bt-rest-btns button { background:#262b36; color:#EDEAE1; border:none; border-radius:8px; padding:10px 18px; font-family:inherit; font-weight:700; cursor:pointer; }
+  .bt-loot { font-size:15px; color:#D4A017; font-weight:700; text-align:center; min-height:20px; }
+  @media (prefers-reduced-motion: reduce) { .bt.shake, .bt-dmg { animation:none; } }
+  </style>`);
+
+  const openBtn = document.createElement('button');
+  openBtn.className = 'bt-open'; openBtn.type = 'button';
+  openBtn.textContent = '⚔ 進入戰鬥模式';
+  document.querySelector('button.add').after(openBtn);
+
+  const bt = document.createElement('div');
+  bt.className = 'bt'; bt.hidden = true;
+  bt.innerHTML = `
+    <div class="bt-bar"><span id="btStage"></span><button class="bt-x" id="btClose" aria-label="離開戰鬥">✕</button></div>
+    <div class="bt-mon" id="btMon">
+      <div class="bt-name" id="btName"></div>
+      <div class="bt-hp"><div id="btHp"></div></div>
+      <div class="bt-hpt" id="btHpt"></div>
+      <div class="bt-sprite" id="btSprite"></div>
+      <div class="bt-loot" id="btLoot"></div>
+    </div>
+    <div class="bt-panel">
+      <div class="bt-row"><label>重量</label><div class="bt-step">
+        <button data-w="-5">−5</button><button data-w="-2.5">−2.5</button><b id="btW">0</b><button data-w="2.5">+2.5</button><button data-w="5">+5</button></div></div>
+      <div class="bt-row"><label>RPE</label><div class="bt-rpe" id="btRpe"></div></div>
+      <button class="bt-atk" id="btAtk">ATTACK<small id="btAtkSub">每做一下點一次</small></button>
+      <button class="bt-done" id="btDone" disabled>完成這組</button>
+    </div>
+    <div class="bt-rest" id="btRest" hidden>
+      <div style="color:#8B92A3;font-size:13px;">組間休息・體力恢復中</div>
+      <svg class="bt-ring" viewBox="0 0 200 200"><circle cx="100" cy="100" r="88" fill="none" stroke="#262b36" stroke-width="10"/>
+        <circle id="btRingArc" cx="100" cy="100" r="88" fill="none" stroke="#4FB477" stroke-width="10" stroke-linecap="round"
+          transform="rotate(-90 100 100)" stroke-dasharray="553" stroke-dashoffset="0"/>
+        <text id="btRingT" x="100" y="112" text-anchor="middle">3:00</text></svg>
+      <div class="bt-rest-btns"><button id="btRestM">−30s</button><button id="btRestP">+30s</button><button id="btRestSkip">下一組</button></div>
+    </div>`;
+  document.body.appendChild(bt);
+  const $b = id => document.getElementById(id);
+  $b('btRpe').innerHTML = ['—',6,7,7.5,8,8.5,9,9.5,10].map(v => `<button data-rpe="${v==='—'?'':v}">${v}</button>`).join('');
+
+  const B = { ex:null, w:0, reps:0, rpe:'', hpMax:1, dealt:0, topPrev:0, setDmg:0, restLeft:0, restMax:180, restTimer:null };
+
+  function exCards(ex) { return cardsOfExercise(ex); }
+  function setupBattle() {
+    const ex = currentExercise();
+    if (!ex) { alert('先在「新增紀錄」選好動作，再進入戰鬥。'); return false; }
+    B.ex = ex;
+    const date = $('fDate').value || todayStr();
+    const all = exCards(ex);
+    const prev = all.filter(c => c.date < date).sort((a,b) => b.date.localeCompare(a.date))[0];
+    const today = all.find(c => c.date === date);
+    B.hpMax = prev ? Math.max(1, Math.round(cardVolume(prev))) : 2000;
+    B.dealt = today ? Math.round(cardVolume(today)) : 0;
+    B.topPrev = prev ? Math.max(...prev.rows.map(r => r.weight)) : 0;
+    const lastRow = (today && today.rows.slice(-1)[0]) || (prev && prev.rows[0]);
+    B.w = parseFloat($('fWeight').value) || (lastRow ? lastRow.weight : 20);
+    B.rpe = ''; B.reps = 0; B.setDmg = 0;
+    const m = MONSTERS[ex.cat === 'main' ? ex.key : 'acc'];
+    $b('btName').textContent = `${m.name}・${ex.label}`;
+    $b('btSprite').textContent = m.icon;
+    $b('btSprite').className = 'bt-sprite';
+    $b('btStage').textContent = prev ? `目標：打贏上次 ${prev.date.slice(5)} 的總量` : '初次遭遇';
+    $b('btLoot').textContent = '';
+    return true;
+  }
+  function hpLeft() { return Math.max(0, B.hpMax - B.dealt - B.setDmg); }
+  function renderBattle() {
+    $b('btW').textContent = B.w;
+    $b('btHp').style.width = (hpLeft() / B.hpMax * 100) + '%';
+    $b('btHpt').textContent = `HP ${fmtNum(hpLeft())} / ${fmtNum(B.hpMax)}`;
+    $b('btAtkSub').textContent = B.reps ? `第 ${B.reps} 下・傷害 ${fmtNum(B.setDmg)}` : '每做一下點一次';
+    $b('btDone').disabled = !B.reps;
+    $b('btDone').textContent = B.reps ? `完成這組：${B.w}kg × ${B.reps}${B.rpe ? ' @' + B.rpe : ''}` : '完成這組';
+    [...$b('btRpe').children].forEach(b => b.classList.toggle('on', b.dataset.rpe === String(B.rpe)));
+  }
+  function floatDmg(n, crit) {
+    const d = document.createElement('div');
+    d.className = 'bt-dmg' + (crit ? ' crit' : '');
+    d.textContent = (crit ? 'CRIT ' : '') + n;
+    const mon = $b('btMon');
+    d.style.left = (40 + Math.random() * 20) + '%';
+    d.style.top = (45 + Math.random() * 10) + '%';
+    mon.appendChild(d);
+    setTimeout(() => d.remove(), 800);
+  }
+  function attack() {
+    if (hpLeft() <= 0 && B.reps === 0) return;
+    B.reps++;
+    const crit = B.topPrev > 0 && B.w > B.topPrev;
+    const dmg = Math.round(B.w * (crit ? 1 : 1));
+    B.setDmg += dmg;
+    floatDmg(dmg, crit);
+    const s = $b('btSprite');
+    s.classList.add('hit'); setTimeout(() => s.classList.remove('hit'), 90);
+    if (crit) { bt.classList.remove('shake'); void bt.offsetWidth; bt.classList.add('shake'); }
+    haptic(crit); chime(crit ? [988, 1319] : [440 + B.reps * 20]);
+    renderBattle();
+  }
+  function commitSet() {
+    if (!B.reps) return;
+    $('fWeight').value = B.w; $('fReps').value = B.reps; $('fSets').value = 1; $('fRpe').value = B.rpe;
+    const wasAlive = B.hpMax - B.dealt > 0;
+    window.handleAdd();
+    B.dealt += B.setDmg; B.setDmg = 0; B.reps = 0; B.rpe = '';
+    renderBattle();
+    if (wasAlive && hpLeft() <= 0) {
+      $b('btSprite').classList.add('dead');
+      $b('btLoot').textContent = '★ 擊敗！今天總量超越上次';
+      haptic(true); chime([523, 659, 784, 1047, 1319]);
+      setTimeout(startRest, 1400);
+    } else startRest();
+  }
+  function startRest() {
+    clearInterval(B.restTimer);
+    B.restMax = B.restLeft = (B.ex && B.ex.cat === 'main') ? 180 : 90;
+    $b('btRest').hidden = false; tickRest();
+    B.restTimer = setInterval(() => {
+      B.restLeft--; tickRest();
+      if (B.restLeft <= 0) { endRest(); haptic(true); chime([784, 784, 1047]); }
+    }, 1000);
+  }
+  function tickRest() {
+    const l = Math.max(0, B.restLeft);
+    $b('btRingT').textContent = Math.floor(l / 60) + ':' + pad(l % 60);
+    $b('btRingArc').setAttribute('stroke-dashoffset', 553 * (1 - l / B.restMax));
+  }
+  function endRest() { clearInterval(B.restTimer); $b('btRest').hidden = true; }
+
+  openBtn.onclick = () => { if (!setupBattle()) return; bt.hidden = false; document.body.style.overflow = 'hidden'; renderBattle(); };
+  $b('btClose').onclick = () => {
+    if (B.reps && !confirm('這組還沒按「完成」，離開會放棄這組。確定？')) return;
+    endRest(); bt.hidden = true; document.body.style.overflow = '';
+  };
+  bt.querySelectorAll('[data-w]').forEach(b => b.onclick = () => {
+    B.w = Math.max(0, round1(B.w + parseFloat(b.dataset.w))); haptic(false); renderBattle();
+  });
+  $b('btRpe').onclick = e => { const b = e.target.closest('[data-rpe]'); if (b) { B.rpe = b.dataset.rpe; renderBattle(); } };
+  $b('btAtk').addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
+  $b('btDone').onclick = commitSet;
+  $b('btRestM').onclick = () => { B.restLeft = Math.max(1, B.restLeft - 30); tickRest(); };
+  $b('btRestP').onclick = () => { B.restLeft += 30; B.restMax = Math.max(B.restMax, B.restLeft); tickRest(); };
+  $b('btRestSkip').onclick = endRest;
 })();
