@@ -121,6 +121,30 @@ input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); bor
 .arm-item.on { border-color:var(--gold); background:#2a3070; }
 .arm-item:disabled { opacity:.45; cursor:default; }
 .arm-lock { height:52px; display:flex; align-items:center; font-size:24px; }
+
+.fighter.swing-sword { animation:swing .32s steps(6); }
+.fighter.swing-axe { animation:swingAxe .38s steps(7); }
+@keyframes swingAxe { 0% { transform:none; } 30% { transform:translate(40px,-18px) rotate(-20deg); } 60% { transform:translate(84px,4px) rotate(24deg); } 100% { transform:none; } }
+.fighter.swing-spear { animation:thrust .28s steps(5); }
+@keyframes thrust { 0% { transform:none; } 25% { transform:translateX(-10px); } 55% { transform:translateX(110px); } 100% { transform:none; } }
+.fighter.swing-hammer { animation:smash .44s steps(8); }
+@keyframes smash { 0% { transform:none; } 35% { transform:translate(50px,-40px) rotate(-16deg); } 55% { transform:translate(80px,6px) rotate(10deg) scaleY(.92); } 100% { transform:none; } }
+.fx { position:absolute; pointer-events:none; left:50%; top:50%; }
+.fx.slash { transform:translate(-50%,-50%); animation:slash .3s steps(4) forwards; }
+.fx.ring { width:20px; height:20px; border:4px solid #fff; border-radius:50%; transform:translate(-50%,-50%); animation:ring .45s steps(6) forwards; }
+@keyframes ring { to { width:200px; height:200px; opacity:0; } }
+.fx.quake { left:0; right:0; top:auto; bottom:0; height:6px; opacity:.8; animation:quake .4s steps(4) forwards; }
+@keyframes quake { 0% { transform:scaleX(.2); } 100% { transform:scaleX(1.2); opacity:0; } }
+.fx.pt { transform:translate(-50%,-50%); animation:pt .65s steps(8) forwards; line-height:1; }
+.fx.shard { transform:translate(-50%,-50%) rotate(45deg); }
+@keyframes pt { to { transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))); opacity:0; } }
+.fx.pillar { top:-60px; bottom:-20px; transform:translateX(-50%); animation:pillar .6s steps(6) forwards; }
+@keyframes pillar { 0% { transform:translateX(-50%) scaleX(.1); opacity:0; } 30% { transform:translateX(-50%) scaleX(1); opacity:1; } 100% { transform:translateX(-50%) scaleX(.3); opacity:0; } }
+.fx.cross { width:140px; height:140px; transform:translate(-50%,-50%); background:
+  linear-gradient(#fff,#fff) center/14px 100% no-repeat, linear-gradient(#fff,#fff) center/100% 14px no-repeat; animation:cross .6s steps(6) forwards; }
+@keyframes cross { 0% { transform:translate(-50%,-50%) scale(.2) rotate(45deg); opacity:1; } 100% { transform:translate(-50%,-50%) scale(1.4) rotate(45deg); opacity:0; } }
+.fx.scrflash { position:fixed; inset:0; left:0; top:0; z-index:45; opacity:.45; animation:scrf .28s steps(3) forwards; }
+@keyframes scrf { to { opacity:0; } }
 </style>
 </head>
 <body>
@@ -644,17 +668,14 @@ function attack() {
   const crit = B.topPrev > 0 && B.w > B.topPrev, dmg = Math.round(B.w), wasAlive = hpLeft() > 0;
   B.dmg += dmg;
   const hero = $('heroF'), mon = $('monF'), ar = $('arena');
-  hero.classList.remove('swing'); void hero.offsetWidth; hero.classList.add('swing');
+  const eq = equipOf(LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), profile.sex, profile.equip);
+  hero.className = 'fighter'; void hero.offsetWidth; hero.classList.add('swing-' + (eq.wt ? eq.type : 'sword'));
   setTimeout(() => {
-    const sl = document.createElement('div'); sl.className = 'slash' + (crit?' crit':'');
-    sl.innerHTML = '<svg viewBox="0 0 60 60" width="120" height="120"><path d="M8 10 L52 50" stroke="#fff" stroke-width="5"/><path d="M18 6 L56 40" stroke="#fff" stroke-width="2"/><path d="M4 22 L40 56" stroke="#fff" stroke-width="2"/></svg>';
-    mon.appendChild(sl); setTimeout(() => sl.remove(), 260);
+    weaponFx(eq, crit, mon, ar);
     mon.classList.remove('knock'); void mon.offsetWidth; mon.classList.add('knock');
     const d = document.createElement('div'); d.className = 'dmg' + (crit?' crit':''); d.textContent = dmg;
     d.style.right = (10+Math.random()*20)+'%'; d.style.top = (15+Math.random()*25)+'%'; ar.appendChild(d); setTimeout(()=>d.remove(), 700);
-    if (crit) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); SFX.crit(); buzz(true); }
-    else { SFX.hit(); buzz(false); }
-  }, 120);
+  }, eq.type==='hammer' ? 200 : 120);
   $('heroF').querySelector('.sprite');
   updEnd();
   $('screen').querySelector('.win .bar > div').style.width = (hpLeft()/B.hpMax*100)+'%';
@@ -819,6 +840,58 @@ function equip(i) {
   const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), cur = equipOf(sum, profile.sex, profile.equip);
   profile.equip = armTab==='weapon' ? { armor:cur.armor, wt:i, type:armType || cur.type } : { armor:i, wt:cur.wt, type:cur.type };
   save(); syncBoard(); SFX.ok(); buzz(false); openArmory(); render();
+}
+
+// ================= 武器特效 =================
+const ELEMENTS = {
+  basic:{ c:'#ffffff', p:'#ffffff' }, steel:{ c:'#ffffff', p:'#f8f048' }, ice:{ c:'#a8e8f8', p:'#e8f8ff' },
+  fire:{ c:'#f89838', p:'#f8f048' }, gold:{ c:'#f8d030', p:'#fff8b0' }, holy:{ c:'#ffffff', p:'#f8f048' },
+};
+const elementOf = wt => wt >= 18 ? 'holy' : wt >= 16 ? 'gold' : wt >= 14 ? 'fire' : wt >= 12 ? 'ice' : wt >= 6 ? 'steel' : 'basic';
+function fxEl(parent, cls, html, life, style) {
+  const d = document.createElement('div'); d.className = 'fx ' + cls; if (html) d.innerHTML = html; if (style) d.style.cssText += style;
+  parent.appendChild(d); setTimeout(() => d.remove(), life); return d;
+}
+function weaponFx(eq, crit, mon, ar) {
+  const wt = eq.wt, el = elementOf(wt), E = ELEMENTS[el], type = wt ? eq.type : 'sword';
+  const scale = (1 + wt/25) * (crit ? 1.35 : 1);
+  const sw = 3 + Math.floor(wt/4);
+  // 1. 依武器種類的斬擊形狀
+  const shapes = {
+    sword: `<path d="M6 8 L54 52" stroke="${E.c}" stroke-width="${sw}"/><path d="M16 4 L58 42" stroke="${E.c}" stroke-width="${Math.max(1,sw-3)}"/>${wt>=10?`<path d="M54 8 L6 52" stroke="${E.c}" stroke-width="${sw}"/>`:''}`,
+    axe:   `<path d="M8 6 Q56 14 50 56" fill="none" stroke="${E.c}" stroke-width="${sw+2}"/><path d="M4 16 Q44 22 40 58" fill="none" stroke="${E.c}" stroke-width="${Math.max(1,sw-2)}"/>`,
+    spear: `<path d="M0 30 L60 30" stroke="${E.c}" stroke-width="${sw}"/><path d="M6 22 L50 22" stroke="${E.c}" stroke-width="2"/><path d="M6 38 L50 38" stroke="${E.c}" stroke-width="2"/>${wt>=10?`<path d="M44 20 L60 30 L44 40" fill="${E.c}"/>`:''}`,
+    hammer:`<path d="M30 4 L34 24 L52 14 L38 30 L58 38 L36 38 L42 58 L30 42 L18 58 L24 38 L2 38 L22 30 L8 14 L26 24 Z" fill="${E.c}" opacity=".9"/>`,
+  };
+  fxEl(mon, 'slash', `<svg viewBox="0 0 60 60" width="${Math.round(110*scale)}" height="${Math.round(110*scale)}" shape-rendering="crispEdges">${shapes[type]}</svg>`, 300);
+  // 2. 衝擊波（騎士級以上、或錘）
+  if (wt >= 10 || type === 'hammer') fxEl(mon, 'ring', '', 450, `border-color:${E.c};`);
+  if (type === 'hammer') fxEl(ar, 'quake', '', 400, `background:${E.c};`);
+  // 3. 粒子
+  const n = el==='basic' ? (crit?4:0) : el==='steel' ? 6 : el==='ice' ? 9 : el==='fire' ? 12 : el==='gold' ? 12 : 16;
+  for (let i = 0; i < n * (crit ? 1.5 : 1); i++) {
+    const a = Math.random()*Math.PI*2, r = 40 + Math.random()*50*scale;
+    let dx = Math.cos(a)*r, dy = Math.sin(a)*r;
+    if (el === 'fire') { dx *= .5; dy = -30 - Math.random()*70; }
+    const glyph = el==='gold'||el==='holy' ? '✦' : '';
+    const sz = el==='ice' ? 6 : el==='fire' ? 7 : 5;
+    fxEl(mon, 'pt' + (el==='ice'?' shard':''), glyph,
+      650, `--dx:${dx.toFixed(0)}px;--dy:${dy.toFixed(0)}px;${glyph?`color:${i%2?E.p:E.c};font-size:${12+Math.random()*10}px;`:`width:${sz}px;height:${sz}px;background:${i%3?E.p:E.c};`}`);
+  }
+  // 4. 光柱（黃金級以上）
+  if (el === 'gold' || el === 'holy') fxEl(mon, 'pillar', '', 600, `background:linear-gradient(transparent, ${E.c} 30%, ${E.p} 70%, transparent);width:${el==='holy'?70:40}px;`);
+  if (el === 'holy') fxEl(mon, 'cross', '', 600);
+  // 5. 全畫面閃光
+  if (el === 'fire' || el === 'holy' || (crit && wt >= 6)) fxEl(document.body, 'scrflash', '', 280, `background:${el==='fire'?'#f89838':el==='holy'?'#ffffff':E.c};`);
+  if (type === 'hammer' || el === 'holy' || crit) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); }
+  // 6. 音效與震動：越強越重
+  if (el === 'holy') beep([1568,1319,1047,784,523],'triangle',.06);
+  else if (el === 'gold') beep([1319,988,659],'triangle',.06);
+  else if (el === 'fire') beep([300,200,120,80],'sawtooth',.06);
+  else if (el === 'ice') beep([1760,1480,1175],'square',.04);
+  else if (type === 'hammer') beep([110,70,50],'square',.08);
+  else (crit ? SFX.crit : SFX.hit)();
+  buzz(crit || wt >= 14 || type === 'hammer');
 }
 // ================= 冒險日誌 =================
 let logLimit = 10;
