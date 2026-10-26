@@ -278,36 +278,73 @@ function titleOf(total) {
   return { name:TITLES[i], next, nextName: next ? TITLES[i+1] : null };
 }
 // 外觀階級門檻（kg，三項總和），女性依體型比例下修
-const TIER_CUT = { male:[0,250,350,450,550,650], female:[0,150,210,270,330,400] };
+const TIER_CUT = { male:[0,100,200,300,400,500,600,700,800,950], female:[0,60,120,180,240,300,360,420,480,570] };
 function tierOf(total, sex) { const c = TIER_CUT[sex==='female'?'female':'male']; let t = 0; c.forEach((v,i)=>{ if ((total||0) >= v) t = i; }); return t; }
-const TIER_NAME = ['布衣','皮甲','鋼鐵鎧','黃金鎧','秘銀鎧','傳說神裝'];
+const TIER_NAME = ['布衣','旅人裝','皮甲','鎖子甲','鋼鐵鎧','騎士鎧','黃金鎧','赤炎鎧','秘銀鎧','傳說神裝'];
+const WEAPON_NAME = ['空手','木棒','短刀','鐵劍','鐵劍與圓盾','大劍與騎士盾','蒼鋼大劍','炎之劍','黃金炎劍','聖劍'];
 const TIER_PAL = [
   { t:'#d83838', a:'#f8c890', b:'#2848a8', k:'#583818', p:'#505060' },
-  { t:'#a86830', a:'#f8c890', b:'#384878', k:'#583818', p:'#3868c8' },
-  { t:'#c0c8d8', a:'#f8c890', b:'#283868', k:'#606878', p:'#3868c8', c:'#c83838' },
-  { t:'#e8b830', a:'#c0c8d8', b:'#283868', k:'#a87818', p:'#d83838', c:'#c83838' },
-  { t:'#78d8f8', a:'#c0e8f8', b:'#1a2a6a', k:'#4898c8', p:'#d83838', c:'#8838b8', y:'#f8d030' },
-  { t:'#f8f8f8', a:'#f8e8a8', b:'#e8b830', k:'#f8d030', p:'#f89838', c:'#f8d030', y:'#f8f048' },
+  { t:'#58a838', a:'#f8c890', b:'#5a4028', k:'#583818', p:'#606878', n:'#a86830' },
+  { t:'#a86830', a:'#f8c890', b:'#384878', k:'#583818', p:'#3868c8', n:'#683818', W:'#c8c8d8' },
+  { t:'#909aa8', a:'#f8c890', b:'#384878', k:'#505060', p:'#3868c8', n:'#683818', W:'#d8dce8', H:'#a87818' },
+  { t:'#c0c8d8', a:'#c0c8d8', b:'#283868', k:'#606878', p:'#d83838', n:'#683818', W:'#e8ecf4', H:'#a87818', S:'#a86830', E:'#d8dce8', m:'#c0c8d8' },
+  { t:'#3858c8', a:'#c0c8d8', b:'#283868', k:'#606878', p:'#d83838', n:'#683818', W:'#e8ecf4', H:'#e8b830', S:'#3858c8', E:'#f8d030', m:'#c0c8d8', c:'#c83838' },
+  { t:'#e8b830', a:'#c0c8d8', b:'#283868', k:'#a87818', p:'#d83838', n:'#683818', W:'#78a8f8', H:'#e8b830', S:'#e8b830', E:'#c83838', m:'#e8b830', c:'#c83838' },
+  { t:'#d83818', a:'#e8b830', b:'#401818', k:'#a87818', p:'#f89838', n:'#401818', W:'#f89838', F:'#f8f048', H:'#e8b830', S:'#a01818', E:'#f8d030', m:'#d83818', c:'#401818' },
+  { t:'#78d8f8', a:'#c0e8f8', b:'#1a2a6a', k:'#4898c8', p:'#f89838', n:'#1a2a6a', W:'#f8d030', F:'#f89838', H:'#f8d030', S:'#78d8f8', E:'#f8f8f8', m:'#78d8f8', c:'#8838b8', y:'#f8d030' },
+  { t:'#f8f8f8', a:'#f8e8a8', b:'#e8b830', k:'#f8d030', p:'#f89838', n:'#e8b830', W:'#f8f8f8', F:'#a8f8f8', H:'#f8d030', S:'#f8f8f8', E:'#f8d030', m:'#f8f8f8', c:'#f8d030', y:'#f8f048' },
 ];
 function heroPx(sex, tier) {
-  const bar = ['pp..........pp','pwwwwwwwwwwwwp'];
-  const head = sex==='female'
-    ? ['....hhhhhh....','...hhhhhhhh...','...hhsssshh...','...hsessesh...','...h.ssss.h...']
-    : ['.....hhhh.....','....hhhhhh....','....hssssh....','....sesses....','.....ssss.....'];
+  const W = 20, H = 16, g = Array.from({length:H}, () => Array(W).fill('.'));
+  const put = (x,y,ch) => { if (x>=0&&x<W&&y>=0&&y<H) g[y][x] = ch; };
+  const stamp = (rows, ox, oy) => rows.forEach((r,y) => [...r].forEach((ch,x) => { if (ch!=='.') put(ox+x, oy+y, ch); }));
+  // 槓鈴：槓片越來越多
+  for (let x = 1; x < W-1; x++) put(x, 1, 'w');
+  const plates = 1 + Math.floor(tier/3);
+  for (let i = 0; i < plates; i++) for (let y = 0; y < 3; y++) { put(i, y, 'p'); put(W-1-i, y, 'p'); }
+  // 頭
+  let head = sex==='female'
+    ? ['..hhhhhh..','.hhhhhhhh.','.hhsssshh.','.hsessesh.','.h.ssss.h.']
+    : ['...hhhh...','..hhhhhh..','..hssssh..','..sesses..','...ssss...'];
+  if (tier >= 4) head = head.map((r,i) => i < 2 ? r.replace(/h/g,'m') : r);
+  stamp(head, 5, 3);
+  if (tier >= 8) stamp(['..y.yy.y..'], 5, 2);
+  // 身體：越強越壯
   const thin = ['...a.tttt.a...','...a.tttt.a...','...s.tttt.s...','.....tttt.....','.....bbbb.....','....bb..bb....','....bb..bb....','...kkk..kkk...'];
   const mid  = ['...aattttaa...','...a.tttt.a...','...s.tttt.s...','....tttttt....','....bbbbbb....','....bb..bb....','....bb..bb....','...kkk..kkk...'];
   const buff = ['..aattttttaa..','.aaa.tttt.aaa.','.ss..tttt..ss.','....tttttt....','....bbbbbb....','...bbb..bbb...','...bbb..bbb...','..kkkk..kkkk..'];
-  let body = (tier >= 2 ? buff : tier === 1 ? mid : thin).slice();
-  if (tier >= 3) body = body.map((r,i) => i < 5 ? 'c' + r.slice(1,13) + 'c' : r);
-  const crown = tier >= 4 ? ['....y.yy.y....'] : [];
-  return [...bar, ...crown, ...head, ...body];
+  const huge = ['.aaattttttaaa.','aaaatttttttaaa','ss..tttttt..ss','...tttttttt...','....bbbbbb....','...bbb..bbb...','...bbb..bbb...','..kkkk..kkkk..'];
+  let body = (tier >= 7 ? huge : tier >= 4 ? buff : tier >= 2 ? mid : thin).slice();
+  if (tier >= 5) body = body.map((r,i) => i < 5 ? 'c' + r.slice(1,13) + 'c' : r);
+  stamp(body, 3, 8);
+  const handRow = 10, hr = body[2], rx = 3 + hr.lastIndexOf('s'), lx = 3 + hr.indexOf('s');
+  // 武器（右手）
+  const wx = rx + 1;
+  const blade = [0,4,3,5,5,7,7,8,8,9][tier];
+  if (tier === 1) for (let i = 0; i < blade; i++) put(wx, handRow-i, 'n');
+  else if (tier >= 2) {
+    put(wx, handRow+1, 'n'); put(wx, handRow, 'n');
+    if (tier >= 3) { put(wx-1, handRow-1, 'H'); put(wx, handRow-1, 'H'); put(wx+1, handRow-1, 'H'); }
+    for (let i = 0; i < blade; i++) {
+      const y = handRow - 2 - i + (tier < 3 ? 1 : 0);
+      const ch = tier >= 7 && i % 2 ? 'F' : 'W';
+      put(wx, y, ch); if (tier >= 5) put(wx+1, y, ch);
+    }
+  }
+  // 盾（左手）
+  if (tier >= 4) {
+    const sx = lx - 3, big = tier >= 5;
+    for (let y = handRow-2; y <= handRow+(big?2:1); y++) for (let x = sx; x < sx+3; x++) put(x, y, 'S');
+    put(sx+1, handRow-1, 'E'); if (big) put(sx+1, handRow, 'E');
+  }
+  return g.map(r => r.join(''));
 }
 function heroSprite(sex, total, size) {
   const tier = tierOf(total, sex);
   const pal = Object.assign({ h: sex==='female' ? '#783818' : '#3a2410', s:'#f8c890', e:'#101010', w:'#c8c8d8' }, TIER_PAL[tier]);
   SPRITES['_hero'] = { pal, px: heroPx(sex, tier) };
   const svg = sprite('_hero', size);
-  return tier >= 5 ? svg.replace('class="sprite"', 'class="sprite aura"') : svg;
+  return tier >= 9 ? svg.replace('class="sprite"', 'class="sprite aura"') : svg;
 }
 
 // ================= 音效與震動 =================
@@ -337,7 +374,7 @@ function openModal(html) { $('modalWin').innerHTML = html; $('modal').hidden = f
 function closeModal() { $('modal').hidden = true; }
 $('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
 function lvUpFx(L) {
-  const d = document.createElement('div'); d.className = 'lvup'; d.innerHTML = `<span>LEVEL UP！ Lv ${L}</span>`;
+  const d = document.createElement('div'); d.className = 'lvup'; d.innerHTML = `<span style="font-size:30px;text-align:center;padding:0 16px">${L}</span>`;
   document.body.appendChild(d); setTimeout(()=>d.remove(), 1700); SFX.lv(); buzz(true);
 }
 
@@ -351,7 +388,7 @@ $('menu').addEventListener('click', e => { const b = e.target.closest('[data-go]
 function render() { renderMenu(); ({status:renderStatus, battle:renderBattleSelect, log:renderLog, map:renderMap, intel:renderIntel, board:renderBoard})[screen](); }
 // ================= 狀態畫面 =================
 function renderStatus() {
-  const s = rpgState(), lo = lvExp(s.L), hi = lvExp(s.L+1);
+  const s = rpgState();
   const rk = s.power != null ? rankOf(s.power) : null;
   const statRows = LIFTS.map((k,i) => {
     const best = allTimeBest(k);
@@ -368,10 +405,10 @@ function renderStatus() {
   $('screen').innerHTML =
     win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sumNow, 84)}
       <div style="flex:1">
-        <div class="row"><span class="gold">「${tt.name}」</span><span>Lv <span class="gold big">${s.L}</span></span></div>
-        <div class="row" style="font-size:13px"><span>${jobOf(...s.cur)}</span><span class="dim">${TIER_NAME[tierOf(sumNow, profile.sex)]}</span></div>
-        <div class="row" style="font-size:13px"><span class="dim">EXP</span>${bar(s.exp-lo, hi-lo, 'exp')}</div>
-        <div class="row" style="font-size:13px"><span class="dim">${fmtNum(s.exp)}</span><span class="dim">下一級還差 ${fmtNum(hi-s.exp)}</span></div>
+        <div class="gold" style="font-size:22px">「${tt.name}」</div>
+        <div class="row" style="font-size:13px"><span>職業</span><span>${jobOf(...s.cur)}</span></div>
+        <div class="row" style="font-size:13px"><span>裝備</span><span>${TIER_NAME[tierOf(sumNow, profile.sex)]}</span></div>
+        <div class="row" style="font-size:13px"><span>武器</span><span>${WEAPON_NAME[tierOf(sumNow, profile.sex)]}</span></div>
         <div class="row" style="font-size:14px"><span>戰力</span><span style="color:${rk?rk[1]:'#a8b0e0'}">${s.power!=null ? Math.round(s.power)+'・'+rk[0] : '— 未鑑定'}</span></div>
       </div></div>`) +
     win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${sumNow ? round1(sumNow)+'kg' : '—'}</span></div>
@@ -500,7 +537,7 @@ function attack() {
 function snap() {
   const s = rpgState();
   const pr = {}; LIFTS.forEach(k => { const b = allTimeBest(k); pr[k] = { e: b?b.val:0, r: [1,3,5,8].map(n => { const x = repBest(k,n); return x?x.weight:0; }) }; });
-  return { L:s.L, exp:s.exp, pr };
+  return { sum: LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), pr };
 }
 function endTurn() {
   if (!B.reps) return;
@@ -512,7 +549,7 @@ function endTurn() {
   const after = snap();
   const wasAlive = B.hpMax - B.dealt > 0;
   B.dmg *= B.sets; B.dealt += B.dmg; B.dmg = 0;
-  const lines = [`這一組結束。${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`, `獲得 ${after.exp-before.exp} EXP！`];
+  const lines = [`這一組結束。${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`];
   if (B.cat === 'main') {
     const a = after.pr[B.key], b = before.pr[B.key], nm = MAIN_LIFTS[B.key].label;
     if (b.e && a.e > b.e) lines.push(`★ 獲得傳說道具「${nm}之魂 e1RM ${a.e}kg」！`);
@@ -524,7 +561,9 @@ function endTurn() {
   renderBattle(); say(lines);
   if (killed) { const sp = $('arena').querySelector('.sprite'); sp.classList.add('dead'); SFX.win(); buzz(true); }
   else SFX.ok();
-  if (after.L > before.L) setTimeout(() => lvUpFx(after.L), killed ? 1200 : 500);
+  const tb = tierOf(before.sum, profile.sex), ta = tierOf(after.sum, profile.sex);
+  if (Math.floor(after.sum/50) > Math.floor(before.sum/50)) setTimeout(() => lvUpFx(`稱號晉升「${titleOf(after.sum).name}」`), killed ? 1200 : 500);
+  if (ta > tb) setTimeout(() => lvUpFx(`獲得 ${TIER_NAME[ta]}・${WEAPON_NAME[ta]}`), killed ? 3000 : 2300);
   setTimeout(startRest, killed ? 2600 : 1500);
 }
 function restWin() {
@@ -569,8 +608,8 @@ function openTitles() {
       <div class="bar exp" style="height:12px"><div style="width:${fill}%"></div></div>
       <span>${me?'▶ ':''}${got||me?TITLES[i]:'？？？'}</span></div>`;
   }).join('');
-  const gal = TIER_NAME.map((n,i) => `<div style="text-align:center;font-size:12px;${i<=tier?'':'opacity:.35'}">
-      ${heroSprite(sex, TIER_CUT[sex][i], 46)}<div>${n}</div><div class="dim">${TIER_CUT[sex][i]}kg</div></div>`).join('');
+  const gal = TIER_NAME.map((n,i) => `<div style="text-align:center;font-size:12px;${i<=tier?'':'opacity:.3'}">
+      ${heroSprite(sex, TIER_CUT[sex][i], 56)}<div>${n}</div><div class="dim" style="font-size:11px">${WEAPON_NAME[i]}</div><div class="${i===tier?'gold':'dim'}">${TIER_CUT[sex][i]}kg</div></div>`).join('');
   openModal(`<div class="win-t">稱號一覽</div>
     <div class="row"><span>目前總和</span><span class="gold">${round1(sumNow)}kg・「${TITLES[cur]}」</span></div>
     <div class="dim" style="font-size:12px;margin-bottom:6px">每 50kg 晉升一個稱號，未解鎖的顯示為？？？</div>
@@ -730,10 +769,9 @@ let boardRows = null, boardSort = 'total', boardErr = '';
 function myBoardDoc() {
   const lifts = {}; LIFTS.forEach(k => lifts[k] = refE1RM(k) ? round1(refE1RM(k)) : 0);
   const total = round1(lifts.squat + lifts.bench + lifts.deadlift);
-  const s = rpgState();
   return { name: heroName().slice(0,16), sex: profile.sex, total, ...lifts,
     dots: total && profile.bodyweight && LIFTS.every(k=>lifts[k]) ? round1(dots(total, profile.bodyweight, profile.sex)) : 0,
-    level: s.L, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 }
 function syncBoard() {
   if (!user) return;
@@ -768,7 +806,7 @@ function renderBoard() {
       ${boardErr ? `<div class="red">${esc(boardErr)}</div>` : ''}
       ${rows.length ? rows.map((r,i) => `<div class="board-row${r.uid===user.uid?' me':''}">
         <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36)}
-        <div><div>${esc(r.name||'無名勇者')} <span class="dim" style="font-size:12px">Lv${r.level||1}</span></div>
+        <div><div>${esc(r.name||'無名勇者')}</div>
           <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
         <span class="gold" style="font-size:18px">${boardSort==='total' ? r.total : r.dots}</span></div>`).join('')
         : '<div class="dim">榜上還沒有英雄。成為第一個吧。</div>'}
