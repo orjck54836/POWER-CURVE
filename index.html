@@ -2,1691 +2,637 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>力量曲線 Power Curve</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>力量曲線 QUEST</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
-  * { box-sizing: border-box; }
-  body { margin:0; font-family:'Inter',sans-serif; background:#15171C; color:#EDEAE1; overflow-x:hidden; }
-  .wrap { max-width: 960px; margin: 0 auto; padding: calc(32px + env(safe-area-inset-top)) 20px 60px; }
-  h1 { font-family:'Bebas Neue',sans-serif; font-size:34px; letter-spacing:1px; margin:0; }
-  .sub { color:#8B92A3; font-size:13px; margin:0 0 28px 0; }
-  .card { background:#1E222B; border-radius:12px; padding:20px; margin-bottom:24px; }
-  .label { font-size:13px; color:#8B92A3; margin-bottom:12px; text-transform:uppercase; letter-spacing:0.5px; }
-  .pr-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:14px; margin-bottom:24px; }
-  .pr-card { background:#1E222B; border-radius:10px; padding:16px 18px; }
-  .pr-num { font-family:'JetBrains Mono',monospace; font-size:28px; font-weight:700; }
-  .pr-sub { font-size:11px; color:#8B92A3; margin-top:2px; }
-  .pills { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
-  .pill { padding:8px 16px; border-radius:20px; font-size:13px; font-weight:600; cursor:pointer; background:#262b36; color:#8B92A3; user-select:none; }
-  .pill.small { padding:6px 14px; font-size:12px; }
-  .pill.active { color:#15171C; }
-  .grid-inputs { display:grid; grid-template-columns:repeat(auto-fit,minmax(100px,1fr)); gap:10px; margin-bottom:14px; }
-  label.field { font-size:11px; color:#8B92A3; }
-  input::placeholder { color:#555c6b; }
-  input[type=date] { -webkit-appearance:none; appearance:none; display:block; min-width:0; min-height:36px; text-align:left; }
-  input, select { width:100%; min-width:0; background:#262b36; border:none; border-radius:6px; padding:8px 10px; color:#EDEAE1; margin-top:4px; font-family:inherit; font-size:13px; }
-  .form-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
-  .form-grid > div { min-width:0; }
-  .form-grid .full { grid-column:1 / -1; }
-  button.add { display:flex; align-items:center; gap:6px; background:#EDEAE1; color:#15171C; border:none; border-radius:8px; padding:9px 18px; font-weight:700; font-size:13px; cursor:pointer; }
-  button.ghost { background:#262b36; color:#EDEAE1; border:none; border-radius:8px; padding:7px 14px; font-size:12px; cursor:pointer; font-family:inherit; }
-  .preview { font-size:12px; color:#8B92A3; margin-bottom:12px; font-family:'JetBrains Mono',monospace; font-weight:700; line-height:1.7; }
-  .error { color:#B72E3D; font-size:12px; margin-bottom:10px; }
-  .hint { font-size:11px; color:#8B92A3; margin-top:8px; line-height:1.6; }
-  .empty { color:#8B92A3; font-size:13px; padding:10px 0; }
-  svg text { font-family:'Inter',sans-serif; fill:#8B92A3; font-size:10px; }
-  .legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin-top:8px; }
-  .legend span { display:flex; align-items:center; gap:5px; }
-  .legend .sw { width:10px; height:10px; border-radius:2px; display:inline-block; }
-
-  .hcard-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:6px; }
-  .hcard-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; }
-  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
-  .hcard-meta { display:flex; align-items:center; gap:12px; font-size:12px; color:#8B92A3; flex-wrap:wrap; }
-  .hcard-row { display:flex; align-items:center; justify-content:space-between; padding:5px 8px; background:#1E222B; border-radius:6px; font-size:12.5px; margin-bottom:4px; }
-  .mono { font-family:'JetBrains Mono',monospace; }
-  .muted { color:#8B92A3; }
-  .trash { cursor:pointer; opacity:0.55; color:#8B92A3; font-size:13px; }
-  .trash:hover { opacity:1; }
-  .card-trash { cursor:pointer; opacity:0.55; color:#B72E3D; font-size:12px; }
-  .card-trash:hover { opacity:1; }
-
-  .hist-group { margin-bottom:20px; }
-  .hist-group-title { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; margin-bottom:8px; }
-  .hist-scroll { display:flex; gap:10px; overflow-x:auto; padding-bottom:8px; }
-  .hist-card { min-width:220px; max-width:220px; flex:0 0 auto; background:#262b36; border-radius:10px; padding:10px 12px; }
-  .hist-card-date { font-size:12px; color:#8B92A3; margin-bottom:6px; }
-  .hist-card-meta { display:flex; align-items:center; justify-content:space-between; font-size:11.5px; margin-bottom:6px; }
-
-  table.voltable { width:100%; border-collapse:collapse; font-size:12.5px; }
-  table.voltable th, table.voltable td { padding:6px 10px; text-align:right; white-space:nowrap; }
-  table.voltable th:first-child, table.voltable td:first-child { text-align:left; position:sticky; left:0; background:#1E222B; }
-  table.voltable thead th { color:#8B92A3; font-weight:600; border-bottom:1px solid #262b36; }
-  table.voltable tbody tr:nth-child(odd) { background:#1a1d24; }
-  table.voltable td.total { font-weight:700; color:#EDEAE1; }
-  .table-scroll { overflow-x:auto; }
-
-  /* 上次成績面板 */
-  .lastpanel { background:#262b36; border-radius:10px; padding:12px; margin-bottom:16px; }
-  .lp-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:10px; }
-  .lp-title { font-size:13px; font-weight:700; }
-  .lp-when { font-size:12px; font-weight:400; color:#8B92A3; margin-left:8px; }
-  .lp-vol { font-family:'JetBrains Mono',monospace; font-size:12px; color:#8B92A3; white-space:nowrap; }
-  .chips { display:flex; flex-wrap:wrap; gap:6px; }
-  .chip { background:#1E222B; border:1px solid transparent; border-radius:6px; padding:5px 9px; font-family:'JetBrains Mono',monospace; font-size:12px; cursor:pointer; color:#EDEAE1; white-space:nowrap; }
-  .chip:hover, .chip:focus-visible { border-color:#8B92A3; outline:none; }
-  .chip.done { background:transparent; border-color:#3a4050; color:#8B92A3; cursor:default; }
-  .lp-section { margin-top:12px; padding-top:10px; border-top:1px solid #1E222B; }
-  .lp-sub { font-size:11px; color:#8B92A3; margin-bottom:6px; }
-  details.lp-more { margin-top:10px; }
-  details.lp-more summary { font-size:11.5px; color:#8B92A3; cursor:pointer; }
-  .lp-old { display:grid; grid-template-columns:64px 1fr; gap:8px; font-size:11.5px; color:#8B92A3; margin-top:6px; font-family:'JetBrains Mono',monospace; }
-
-  /* 週視圖 & 熱力圖 */
-  .week-nav { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
-  .weekstrip { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:6px; }
-  .wday { background:#262b36; border-radius:8px; padding:8px; min-height:92px; cursor:pointer; }
-  .wday.today { box-shadow:inset 0 0 0 1px #EDEAE1; }
-  .wday.rest { opacity:.5; cursor:default; }
-  .wday-h { font-size:11px; color:#8B92A3; margin-bottom:6px; display:flex; justify-content:space-between; }
-  .tag { display:block; font-size:11px; border-radius:4px; padding:2px 5px; margin-bottom:3px; color:#15171C; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .tag.acc { background:#3a4050; color:#EDEAE1; font-weight:500; }
-  .heat { display:flex; gap:3px; overflow-x:auto; padding-bottom:6px; margin-top:18px; }
-  .heat-col { display:flex; flex-direction:column; gap:3px; }
-  .heat-month { height:12px; font-size:9px; color:#8B92A3; white-space:nowrap; }
-  .heat-cell { width:13px; height:13px; border-radius:3px; background:#262b36; }
-  .heat-cell.has { cursor:pointer; }
-  .heat-cell.future { background:transparent; }
-
-  /* 依日期歷史 */
-  .day-block { background:#262b36; border-radius:10px; padding:12px 14px; margin-bottom:10px; transition:box-shadow .3s; }
-  .day-block.flash { box-shadow:0 0 0 2px #4FB477; }
-  .day-head { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
-  .day-title { font-size:14px; font-weight:700; }
-  .day-ex { background:#1E222B; border-radius:8px; padding:8px 10px; margin-top:8px; }
-  .day-ex .hcard-row { background:#262b36; }
-
-  /* 分析區 */
-  .subhead { font-size:13px; font-weight:700; color:#EDEAE1; margin:26px 0 10px; }
-  .subhead:first-child { margin-top:0; }
-  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
-  .kpi { background:#262b36; border-radius:10px; padding:12px 14px; }
-  .kpi-l { font-size:11px; color:#8B92A3; margin-bottom:4px; }
-  .kpi-v { font-family:'JetBrains Mono',monospace; font-size:22px; font-weight:700; }
-  .kpi-n { font-size:11px; margin-top:4px; line-height:1.5; }
-  .zone-row { display:grid; grid-template-columns:48px 1fr; gap:10px; align-items:center; margin-bottom:8px; font-size:12px; }
-  .zone-bar { display:flex; height:18px; border-radius:4px; overflow:hidden; background:#262b36; }
-  .zone-bar div { height:100%; }
-  .profile-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; max-width:420px; }
-  details.glossary { margin-top:22px; font-size:12px; color:#8B92A3; line-height:1.7; }
-  details.glossary summary { cursor:pointer; color:#EDEAE1; font-weight:600; }
-  .ok { color:#4FB477; } .warn { color:#D4A017; } .bad { color:#B72E3D; } .low { color:#2E6F9E; }
-
-  /* 訓練週期 */
-  .block-now { border-radius:10px; padding:14px; background:#262b36; border-left:4px solid var(--bc); margin-bottom:14px; }
-  .block-now-top { display:flex; justify-content:space-between; align-items:baseline; gap:8px; flex-wrap:wrap; }
-  .block-now-name { font-size:16px; font-weight:700; }
-  .block-now-week { font-family:'JetBrains Mono',monospace; font-size:13px; color:#8B92A3; }
-  .block-target { font-size:12px; color:#8B92A3; margin-top:6px; }
-  .progress { height:6px; background:#1E222B; border-radius:3px; margin-top:10px; overflow:hidden; }
-  .progress div { height:100%; background:var(--bc); }
-  .timeline { display:flex; gap:3px; overflow-x:auto; padding-bottom:6px; margin-bottom:14px; }
-  .tl-seg { flex:0 0 auto; border-radius:6px; padding:6px 8px; font-size:11px; color:#15171C; font-weight:700; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; border:2px solid transparent; }
-  .tl-seg.sel { border-color:#EDEAE1; }
-  .tl-seg.past { opacity:.55; }
-  .tl-seg small { display:block; font-weight:500; opacity:.8; }
-  .block-form { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; background:#262b36; border-radius:10px; padding:12px; margin-bottom:14px; }
-  .block-form > div { min-width:0; }
-  .block-form input, .block-form select { background:#1E222B; }
-  .block-form .actions { grid-column:1 / -1; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
-  .block-tag { display:inline-block; font-size:10.5px; padding:1px 6px; border-radius:4px; color:#15171C; font-weight:700; vertical-align:middle; }
-
-  /* 編輯單組 */
-  .hcard-row .row-text { flex:1; min-width:0; cursor:pointer; }
-  .row-actions { display:flex; gap:12px; flex:0 0 auto; }
-  .chip.done.js-edit { cursor:pointer; }
-  .row-editor { background:#15171C; border-radius:6px; padding:6px; margin-bottom:4px; }
-  .chips .row-editor { flex-basis:100%; }
-  .ed-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; }
-  .ed-grid span { font-size:10px; color:#8B92A3; }
-  .row-editor input, .row-editor select { margin-top:0; padding:6px; }
-  .ed-actions { display:flex; gap:6px; margin-top:6px; justify-content:flex-end; align-items:center; }
-  .ed-err { color:#B72E3D; font-size:11px; margin-right:auto; }
-  .ed-btn { border:none; border-radius:6px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer; font-family:inherit; }
-  .ed-save { background:#EDEAE1; color:#15171C; }
-  .ed-cancel { background:#262b36; color:#EDEAE1; }
-
-  /* 輔助動作選擇器 */
-  .pick-field { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; background:#262b36; border:none; border-radius:8px; padding:12px 14px; color:#EDEAE1; font-family:inherit; font-size:15px; font-weight:600; cursor:pointer; text-align:left; }
-  .pick-field.placeholder { color:#8B92A3; font-weight:500; }
-  .pick-field:focus-visible { outline:2px solid #8B92A3; }
-  .pick-field .chev { color:#8B92A3; font-size:12px; flex:0 0 auto; }
-  .sheet-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:50; display:flex; align-items:flex-end; justify-content:center; }
-  .sheet-backdrop[hidden] { display:none; }
-  .sheet { width:100%; max-width:560px; max-height:80vh; background:#1E222B; border-radius:16px 16px 0 0; display:flex; flex-direction:column; padding:8px 16px calc(16px + env(safe-area-inset-bottom)); animation:sheetUp .2s ease-out; }
-  @keyframes sheetUp { from { transform:translateY(24px); opacity:0; } to { transform:none; opacity:1; } }
-  @media (prefers-reduced-motion: reduce) { .sheet { animation:none; } }
-  .sheet-handle { width:36px; height:4px; border-radius:2px; background:#3a4050; margin:4px auto 10px; }
-  .sheet-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-  .sheet-head span { font-size:15px; font-weight:700; }
-  .sheet-search { margin:0 0 12px; padding:10px 12px; }
-  .sheet-body { overflow-y:auto; -webkit-overflow-scrolling:touch; flex:1; min-height:0; }
-  .pick-sec { font-size:11px; color:#8B92A3; margin:4px 0 8px; }
-  .pick-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-bottom:16px; }
-  .pick-item { background:#262b36; border:1px solid transparent; border-radius:10px; padding:10px 12px; min-height:54px; color:#EDEAE1; font-family:inherit; text-align:left; cursor:pointer; }
-  .pick-item:hover, .pick-item:focus-visible { border-color:#8B92A3; outline:none; }
-  .pick-item.sel { border-color:#EDEAE1; }
-  .pick-item b { display:block; font-size:13.5px; line-height:1.3; overflow-wrap:anywhere; }
-  .pick-item small { display:block; font-size:11px; color:#8B92A3; margin-top:3px; }
-  .pick-new { width:100%; background:#EDEAE1; color:#15171C; border:none; border-radius:10px; padding:12px; font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; margin-bottom:14px; text-align:left; }
-  .pick-new.secondary { background:transparent; color:#EDEAE1; border:1px dashed #3a4050; font-weight:600; }
-  @media (min-width:601px) {
-    .sheet-backdrop { align-items:center; }
-    .sheet { border-radius:16px; max-height:70vh; }
-    .pick-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
-  }
-
-  @media (max-width:600px) {
-    .wrap { padding:calc(16px + env(safe-area-inset-top)) 12px 50px; }
-    .card { padding:16px; }
-    .pr-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
-    .pr-card { padding:12px 14px; }
-    .pr-num { font-size:22px; }
-    input, select { font-size:16px; } /* iOS 小於 16px 會自動放大畫面 */
-    button.add { width:100%; justify-content:center; padding:12px; }
-    .wday { min-height:72px; padding:5px; }
-    .tag { font-size:10px; padding:1px 3px; }
-  }
+:root { --w1:#24348a; --w2:#0c1552; --line:#f4f4f4; --gold:#f8d030; --hp:#58d858; --mp:#58a8f8; --red:#f85858; --dim:#a8b0e0; --bg:#05060f; }
+* { box-sizing:border-box; }
+html,body { margin:0; background:var(--bg); color:var(--line); font-family:'DotGothic16','Noto Sans TC','PingFang TC',monospace; -webkit-tap-highlight-color:transparent; }
+body { padding:calc(10px + env(safe-area-inset-top)) 10px calc(120px + env(safe-area-inset-bottom)); background-image:radial-gradient(#1a1f4a 1px, transparent 1px); background-size:22px 22px; }
+.app { max-width:520px; margin:0 auto; }
+.win { position:relative; background:linear-gradient(var(--w1),var(--w2)); border:3px solid var(--line); border-radius:8px;
+  box-shadow:0 0 0 3px var(--bg), inset 0 0 0 2px var(--w2); padding:14px 14px 12px; margin:14px 0; }
+.win-t { position:absolute; top:-11px; left:12px; background:var(--w1); padding:0 6px; font-size:13px; color:var(--gold); border:2px solid var(--line); border-radius:4px; line-height:16px; }
+.gold { color:var(--gold); } .dim { color:var(--dim); } .red { color:var(--red); } .green { color:var(--hp); } .blue { color:var(--mp); }
+.big { font-size:28px; line-height:1; }
+.row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:3px 0; font-size:15px; }
+.bar { height:10px; background:var(--bg); border:2px solid var(--line); border-radius:3px; overflow:hidden; flex:1; }
+.bar > div { height:100%; background:var(--hp); transition:width .3s steps(8); }
+.bar.exp > div { background:var(--gold); } .bar.mp > div { background:var(--mp); }
+.cmds { display:grid; grid-template-columns:1fr 1fr; gap:4px 10px; }
+.cmd { background:none; border:none; color:var(--line); font:inherit; font-size:17px; text-align:left; padding:8px 4px 8px 22px; cursor:pointer; position:relative; border-radius:4px; }
+.cmd::before { content:'▶'; position:absolute; left:2px; top:8px; font-size:13px; visibility:hidden; }
+.cmd:hover::before, .cmd:focus-visible::before, .cmd.sel::before { visibility:visible; animation:blink .7s steps(2) infinite; }
+.cmd:focus-visible { outline:none; background:rgba(255,255,255,.06); }
+.cmd:disabled { color:#6a72a8; }
+.cmd small { display:block; font-size:12px; color:var(--dim); }
+@keyframes blink { 50% { opacity:0; } }
+.menu { position:fixed; left:0; right:0; bottom:0; padding:0 10px calc(10px + env(safe-area-inset-bottom)); z-index:20; }
+.menu .win { max-width:520px; margin:0 auto; padding:6px 8px; }
+.menu .cmds { grid-template-columns:repeat(5,1fr); gap:0; }
+.menu .cmd { font-size:14px; padding:10px 0 8px 14px; }
+.menu .cmd::before { top:11px; font-size:11px; left:0; }
+.sprite { image-rendering:pixelated; display:block; }
+.hero-box { display:flex; gap:14px; align-items:center; }
+.msg { white-space:pre-line; min-height:74px; font-size:16px; line-height:1.6; cursor:pointer; }
+.msg::after { content:'▼'; position:absolute; right:12px; bottom:6px; font-size:11px; animation:blink .7s steps(2) infinite; }
+.arena { position:relative; height:200px; display:flex; align-items:center; justify-content:center; }
+.arena .sprite { transition:transform .08s; }
+.arena .hit { filter:brightness(3) saturate(0); transform:translateX(6px); }
+.arena .dead { animation:die 1s steps(6) forwards; }
+@keyframes die { to { opacity:0; transform:translateY(20px) scaleY(.2); } }
+.dmg { position:absolute; font-size:30px; color:#fff; text-shadow:2px 2px 0 #000, -2px -2px 0 #000; pointer-events:none; animation:dmg .7s steps(7) forwards; }
+.dmg.crit { color:var(--gold); font-size:40px; }
+@keyframes dmg { 0% { transform:translateY(0); } 30% { transform:translateY(-24px); } 100% { transform:translateY(-40px); opacity:0; } }
+.flash { animation:flash .3s steps(2) 2; }
+@keyframes flash { 50% { background:#fff; } }
+.shake { animation:shake .2s steps(4); }
+@keyframes shake { 25% { transform:translate(-5px,2px); } 75% { transform:translate(5px,-2px); } }
+.modal { position:fixed; inset:0; background:rgba(5,6,15,.8); z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; }
+.modal[hidden] { display:none; }
+.modal .win { width:100%; max-width:420px; max-height:84vh; overflow-y:auto; }
+.step { display:flex; align-items:center; justify-content:center; gap:6px; margin:10px 0; }
+.step button { background:var(--w2); color:var(--line); border:2px solid var(--line); border-radius:4px; font:inherit; font-size:15px; min-width:46px; height:40px; cursor:pointer; }
+.step b { font-size:26px; min-width:96px; text-align:center; color:var(--gold); font-weight:400; }
+input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); border:2px solid var(--line); border-radius:4px; font:inherit; font-size:16px; padding:8px; margin:6px 0; }
+.heat { display:flex; gap:2px; overflow-x:auto; padding:4px 0; }
+.heat-col { display:flex; flex-direction:column; gap:2px; }
+.tile { width:14px; height:14px; border-radius:2px; }
+.tbl { width:100%; border-collapse:collapse; font-size:14px; }
+.tbl td, .tbl th { padding:4px 4px; text-align:right; font-weight:400; white-space:nowrap; }
+.tbl td:first-child, .tbl th:first-child { text-align:left; }
+.tbl th { color:var(--dim); }
+.scroll { overflow-x:auto; }
+.log-row { display:flex; justify-content:space-between; padding:4px 0 4px 18px; font-size:15px; cursor:pointer; position:relative; }
+.log-row::before { content:'▶'; position:absolute; left:0; font-size:12px; top:6px; visibility:hidden; }
+.log-row:hover::before { visibility:visible; }
+.lvup { position:fixed; inset:0; z-index:50; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+.lvup span { font-size:46px; color:var(--gold); text-shadow:3px 3px 0 #000; animation:lv 1.6s steps(8) forwards; }
+@keyframes lv { 0% { transform:scale(.3); } 25% { transform:scale(1.2); } 40%,80% { transform:scale(1); opacity:1; } 100% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
 </style>
 </head>
 <body>
-<div class="sheet-backdrop" id="pickSheet" hidden>
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="pickTitle">
-    <div class="sheet-handle"></div>
-    <div class="sheet-head"><span id="pickTitle">選擇輔助動作</span><button class="ghost" onclick="closePicker()">關閉</button></div>
-    <input type="search" id="pickSearch" class="sheet-search" placeholder="搜尋，或輸入新動作名稱" autocomplete="off" enterkeyhint="done">
-    <div class="sheet-body" id="pickList"></div>
-  </div>
-</div>
-<div class="wrap">
-  <h1>🏋 力量曲線 POWER CURVE</h1>
-  <p class="sub"><span id="syncStatus" style="color:#8B92A3;">連線中...</span></p>
-  <div id="authBar" style="margin-bottom:24px;"></div>
-
-  <div class="pr-grid" id="prGrid"></div>
-
-  <div class="card">
-    <div class="label">新增紀錄</div>
-    <div class="pills" id="categoryPills"></div>
-    <div id="mainLiftPills" class="pills"></div>
-    <div id="accessoryNameField" style="display:none; margin-bottom:14px;">
-      <input type="hidden" id="exerciseName">
-      <button type="button" class="pick-field placeholder" id="pickField" onclick="openPicker()" aria-haspopup="dialog">
-        <span id="pickFieldText">選擇輔助動作</span><span class="chev">▾</span>
-      </button>
-    </div>
-    <div class="lastpanel" id="lastPanel"></div>
-    <div class="form-grid">
-      <div class="full"><label class="field">日期</label><input type="date" id="fDate"></div>
-      <div><label class="field">重量 kg</label><input type="number" id="fWeight" inputmode="decimal" step="0.5"></div>
-      <div><label class="field">次數</label><input type="number" id="fReps" inputmode="numeric"></div>
-      <div><label class="field">組數</label><input type="number" id="fSets" inputmode="numeric" value="1"></div>
-      <div><label class="field">RPE</label>
-        <select id="fRpe">
-          <option value="" selected>—</option>
-          <option>6</option><option>6.5</option><option>7</option><option>7.5</option>
-          <option>8</option><option>8.5</option><option>9</option><option>9.5</option><option>10</option>
-        </select>
-      </div>
-    </div>
-    <div class="preview" id="preview"></div>
-    <div class="error" id="formError"></div>
-    <button class="add" onclick="handleAdd()">+ 加入這組</button>
-  </div>
-
-  <div class="card">
-    <div class="week-nav">
-      <div class="label" style="margin-bottom:0;">訓練週期</div>
-      <button class="ghost" onclick="openBlockForm()">+ 新增週期</button>
-    </div>
-    <div id="blockNow"></div>
-    <div class="timeline" id="blockTimeline"></div>
-    <div id="blockFormWrap"></div>
-    <div class="table-scroll"><div id="blockReview"></div></div>
-  </div>
-
-  <div class="card">
-    <div class="week-nav">
-      <div class="label" style="margin-bottom:0;">訓練日曆</div>
-      <div style="display:flex; gap:6px; align-items:center;">
-        <button class="ghost" onclick="shiftWeek(-1)" aria-label="上一週">◀</button>
-        <span id="weekLabel" style="font-size:12.5px; min-width:120px; text-align:center;"></span>
-        <button class="ghost" onclick="shiftWeek(1)" aria-label="下一週">▶</button>
-        <button class="ghost" onclick="shiftWeek(0)">本週</button>
-      </div>
-    </div>
-    <div class="weekstrip" id="weekStrip"></div>
-    <div class="hint" id="weekSummary"></div>
-    <div class="heat" id="heatmap"></div>
-    <div class="hint" id="heatSummary"></div>
-  </div>
-
-  <div class="card">
-    <div class="label">主項 e1RM 趨勢</div>
-    <div id="e1rmChart"></div>
-  </div>
-
-  <div class="card">
-    <div class="label">🔬 科學化分析</div>
-    <div class="profile-row">
-      <div><label class="field">體重 kg</label><input type="number" id="pBw" step="0.1" placeholder="例如 83"></div>
-      <div><label class="field">性別</label>
-        <select id="pSex"><option value="male">男</option><option value="female">女</option></select>
-      </div>
-    </div>
-    <div id="analytics" style="margin-top:20px;"></div>
-
-    <div class="subhead">RPE 處方表：今天該上多重</div>
-    <div class="profile-row" style="margin-bottom:12px;">
-      <div><label class="field">主項</label><select id="calcLift"></select></div>
-      <div><label class="field">e1RM kg</label><input type="number" id="calcE1" step="0.5"></div>
-    </div>
-    <div class="table-scroll"><div id="calcTable"></div></div>
-
-    <details class="glossary">
-      <summary>這些數字是什麼意思？</summary>
-      <p><b>RPE 怎麼填</b>：頂組填 RPE 才會算 e1RM；照百分比做的量組留空即可。只填次數＋RPE、重量留空，會依目前 e1RM 給建議重量。點「上次」的任一組可直接帶入表單。</p>
-      <p><b>訓練週期</b>：把課表切成幾週一段，各段有不同目標。累積期堆量（65–80%）、強化期降量升強度（75–87%）、巔峰期低量高強度（85–95%）、減量週讓疲勞消退，最後測試或比賽。週期回顧的 Δ 是「該週期內最佳 e1RM」減去「進入週期前的 e1RM」。</p>
-      <p><b>修改紀錄</b>：歷史紀錄或「今天已做」裡的任一組，點一下就能改重量、次數、組數和 RPE。</p>
-      <p><b>目前 e1RM</b>：近 6 週內有 RPE 的頂組換算出的最高估計 1RM，比「歷史最佳」更能反映現在的狀態。</p>
-      <p><b>8 週趨勢</b>：近 56 天每次 e1RM 的線性回歸斜率（kg/週）。進階者每週 +0.3～1 kg 已算穩定進步；接近 0 或負值且持續數週，代表可能停滯或疲勞累積。</p>
-      <p><b>有效組（hard sets）</b>：RPE ≥ 7 的組，或沒填 RPE 但強度 ≥ 70% e1RM 的組。多數研究建議每個主項每週約 6～15 組有效組。</p>
-      <p><b>INOL</b>（Hristo Hristov）＝ 次數 ÷ (100 − 強度%)，衡量單次訓練的刺激量。單一動作單次訓練約 0.4～1.0 適中，&gt;1.0 偏重；每週合計約 2～3 是常見範圍。</p>
-      <p><b>ACWR</b>（急性:慢性負荷比）＝ 近 7 天總量 ÷ 近 28 天週平均。0.8～1.3 為負荷穩定區，&gt;1.5 代表短期加量過快。這個指標在研究上仍有爭議，適合當趨勢提醒，不是受傷預測器。</p>
-      <p><b>單調性 / 張力</b>（Foster）：單調性＝近 7 天每日負荷平均 ÷ 標準差，&gt;2 代表每天負荷太像、缺乏輕重變化；張力＝週總量 × 單調性。原始方法用 sRPE，這裡以訓練總量代替。</p>
-      <p><b>DOTS</b>：依體重校正的力量分數，可跨體重級別比較。約 300 為入門、400 中階、500 進階。</p>
-    </details>
-  </div>
-
-  <div class="card">
-    <div class="label">動作總量趨勢</div>
-    <select id="trendPick" style="width:220px; margin-bottom:14px;"><option value="">選擇動作</option></select>
-    <div id="accChart"></div>
-  </div>
-
-  <div class="card">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-      <div class="label" style="margin-bottom:0;">各動作訓練總量</div>
-      <div class="pills" id="volPills" style="margin-bottom:0;"></div>
-    </div>
-    <div class="table-scroll"><div id="volTable"></div></div>
-  </div>
-
-  <div class="card" id="historyCard">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-      <div class="label" style="margin-bottom:0;">歷史紀錄</div>
-      <div class="pills" id="histPills" style="margin-bottom:0;"></div>
-    </div>
-    <div id="historyList"></div>
-  </div>
-</div>
-
+<div class="app" id="screen"></div>
+<nav class="menu"><div class="win"><div class="cmds" id="menu"></div></div></nav>
+<div class="modal" id="modal" hidden><div class="win" id="modalWin"></div></div>
 <script>
+// ================= 核心資料與計算（與原版相同，資料完全相容） =================
 const RPE_TABLE = {
-  10:  [100,95.5,92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9],
-  9.5: [97.8,93.9,90.7,87.8,85.0,82.4,79.9,77.4,75.1,72.8],
-  9:   [95.5,92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9,71.7],
-  8.5: [93.9,90.7,87.8,85.0,82.4,79.9,77.4,75.1,72.8,70.7],
-  8:   [92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9,71.7,69.4],
-  7.5: [90.7,87.8,85.0,82.4,79.9,77.4,75.1,72.8,70.7,68.6],
-  7:   [89.2,86.3,83.7,81.1,78.6,76.2,73.9,71.7,69.4,67.4],
-  6.5: [87.8,85.0,82.4,79.9,77.4,75.1,72.8,70.7,68.6,66.7],
-  6:   [86.3,83.7,81.1,78.6,76.2,73.9,71.7,69.4,67.4,65.6],
+  10:[100,95.5,92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9], 9.5:[97.8,93.9,90.7,87.8,85.0,82.4,79.9,77.4,75.1,72.8],
+  9:[95.5,92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9,71.7], 8.5:[93.9,90.7,87.8,85.0,82.4,79.9,77.4,75.1,72.8,70.7],
+  8:[92.2,89.2,86.3,83.7,81.1,78.6,76.2,73.9,71.7,69.4], 7.5:[90.7,87.8,85.0,82.4,79.9,77.4,75.1,72.8,70.7,68.6],
+  7:[89.2,86.3,83.7,81.1,78.6,76.2,73.9,71.7,69.4,67.4], 6.5:[87.8,85.0,82.4,79.9,77.4,75.1,72.8,70.7,68.6,66.7],
+  6:[86.3,83.7,81.1,78.6,76.2,73.9,71.7,69.4,67.4,65.6],
 };
-const MAIN_LIFTS = {
-  squat:{label:'深蹲', color:'#2E6F9E'},
-  bench:{label:'臥推', color:'#D4A017'},
-  deadlift:{label:'硬舉', color:'#B72E3D'},
-};
-const ACCESSORY_COLOR = '#8B92A3';
-const ZONES = [
-  {max:60, label:'<60%', color:'#3a4050'},
-  {max:70, label:'60–70%', color:'#4FB477'},
-  {max:80, label:'70–80%', color:'#2E6F9E'},
-  {max:90, label:'80–90%', color:'#D4A017'},
-  {max:Infinity, label:'≥90%', color:'#B72E3D'},
-];
-const WD_SUN = ['日','一','二','三','四','五','六'];
-const RPE_OPTIONS = [6,6.5,7,7.5,8,8.5,9,9.5,10];
+const MAIN_LIFTS = { squat:{label:'深蹲'}, bench:{label:'臥推'}, deadlift:{label:'硬舉'} };
+const LIFTS = ['squat','bench','deadlift'];
 const BLOCK_TYPES = {
-  accumulation:    { label:'累積期',   color:'#4FB477', pct:[65,80], rpe:[6,8] },
-  intensification: { label:'強化期',   color:'#9B7FD4', pct:[75,87], rpe:[7,9] },
-  peaking:         { label:'巔峰期',   color:'#E07A3F', pct:[85,95], rpe:[8,9.5] },
-  deload:          { label:'減量週',   color:'#6B7385', pct:[55,70], rpe:[5,7] },
-  test:            { label:'測試／比賽', color:'#EDEAE1', pct:[90,105], rpe:[9,10] },
+  accumulation:{label:'累積期',color:'#58d858',pct:[65,80]}, intensification:{label:'強化期',color:'#b088f8',pct:[75,87]},
+  peaking:{label:'巔峰期',color:'#f89838',pct:[85,95]}, deload:{label:'減量週',color:'#a8b0e0',pct:[55,70]},
+  test:{label:'測試／比賽',color:'#f8d030',pct:[90,105]},
 };
-const WD_MON = ['一','二','三','四','五','六','日'];
+const WD = ['日','一','二','三','四','五','六'];
+const RPE_SKILLS = [
+  {v:'',n:'不計'}, {v:6,n:'試探'}, {v:7,n:'穩擊'}, {v:7.5,n:'穩擊+'}, {v:8,n:'強擊'}, {v:8.5,n:'強擊+'},
+  {v:9,n:'奮力'}, {v:9.5,n:'捨身'}, {v:10,n:'極限'},
+];
 
-// ===== Firebase 設定 =====
+const pad = n => String(n).padStart(2,'0');
+const fmtDate = d => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const todayStr = () => fmtDate(new Date());
+const parseDate = s => new Date(s+'T00:00:00');
+const addDays = (s,n) => { const d = parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); };
+const daysBetween = (a,b) => Math.round((parseDate(b)-parseDate(a))/86400000);
+const getMonday = s => { const d = parseDate(s), w = d.getDay(); d.setDate(d.getDate()+((w===0?-6:1)-w)); return fmtDate(d); };
+const wd = s => WD[parseDate(s).getDay()];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const round1 = x => Math.round(x*10)/10;
+const roundTo = (x,s) => Math.round(x/s)*s;
+const fmtNum = n => Math.round(n).toLocaleString();
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+function pctFor(reps, rpe) { const t = RPE_TABLE[rpe]; if (!t) return null; return t[Math.min(Math.max(Math.round(reps),1),10)-1]; }
+function calcE1RM(w, r, rpe) { return w / ((pctFor(r,rpe) ?? pctFor(r,8))/100); }
+const rowVolume = r => r.weight*r.reps*r.sets;
+const cardVolume = c => c.rows.reduce((s,r)=>s+rowVolume(r),0);
+function cardBestE1RM(c) {
+  if (c.category!=='main') return null;
+  const w = c.rows.filter(r=>r.rpe!=null); if (!w.length) return null;
+  return round1(Math.max(...w.map(r=>calcE1RM(r.weight,r.reps,r.rpe))));
+}
+const liftCards = k => entries.filter(c=>c.category==='main'&&c.lift===k);
+function refE1RM(k, upto, win=42) {
+  upto = upto||todayStr(); const from = addDays(upto,-win);
+  let best=null, fb=null, fbD='';
+  liftCards(k).forEach(c => { if (c.date>upto) return; const e = cardBestE1RM(c); if (e==null) return;
+    if (c.date>from) { if (best==null||e>best) best=e; } else if (c.date>fbD) { fbD=c.date; fb=e; } });
+  return best ?? fb;
+}
+function allTimeBest(k) { let b=null; liftCards(k).forEach(c=>{ const e=cardBestE1RM(c); if (e!=null&&(!b||e>b.val)) b={val:e,date:c.date}; }); return b; }
+function repBest(k, n) { let b=null; liftCards(k).forEach(c=>c.rows.forEach(r=>{ if (r.reps>=n&&(!b||r.weight>b.weight)) b={weight:r.weight,date:c.date}; })); return b; }
+function rowInol(r, ref) { if (!ref) return 0; const p = Math.min(r.weight/ref*100,99); return r.reps*r.sets/(100-p); }
+function hardSets(r, ref) { if (r.rpe!=null) return r.rpe>=7?r.sets:0; return (ref&&r.weight/ref>=0.7)?r.sets:0; }
+function linSlope(pts) { const n=pts.length; if (n<2) return null; const mx=pts.reduce((s,p)=>s+p.x,0)/n, my=pts.reduce((s,p)=>s+p.y,0)/n;
+  let a=0,b=0; pts.forEach(p=>{a+=(p.x-mx)*(p.y-my); b+=(p.x-mx)**2;}); return b?a/b:null; }
+function dots(total, bw, sex) {
+  const c = sex==='female' ? [-57.96288,13.6175032,-0.1126655495,0.0005158568,-0.0000010706] : [-307.75076,24.0900756,-0.1918759221,0.0007391293,-0.000001093];
+  const b = Math.min(Math.max(bw,40), sex==='female'?150:210);
+  return total*500/(c[0]+c[1]*b+c[2]*b**2+c[3]*b**3+c[4]*b**4);
+}
+function migrateLegacyEntries(raw) {
+  if (!Array.isArray(raw)) return [];
+  if (!raw.some(e=>!Array.isArray(e.rows))) return raw;
+  const out = [];
+  raw.forEach(e => {
+    if (Array.isArray(e.rows)) { out.push(e); return; }
+    let c = out.find(x=>x.date===e.date&&x.category===e.category&&(e.category==='main'?x.lift===e.lift:x.exerciseName===e.exerciseName));
+    if (!c) { c = {id:e.id||uid(), date:e.date, category:e.category, lift:e.category==='main'?e.lift:null, exerciseName:e.category==='accessory'?e.exerciseName:null, rows:[]}; out.push(c); }
+    c.rows.push({id:(e.id||uid())+'_'+c.rows.length, weight:e.weight, reps:e.reps, sets:e.sets||1, rpe:e.rpe!=null?e.rpe:null});
+  });
+  return out;
+}
+const sortedBlocks = () => [...blocks].sort((a,b)=>a.start.localeCompare(b.start));
+const blockEnd = b => addDays(b.start, b.weeks*7-1);
+const blockAt = d => blocks.find(b=>d>=b.start&&d<=blockEnd(b))||null;
+const blockWeek = (b,d) => Math.floor(daysBetween(b.start,d)/7)+1;
+const blockLabel = b => b.name || BLOCK_TYPES[b.type].label;
+
+// ================= 狀態與儲存 =================
+let entries = [], profile = { bodyweight:null, sex:'male' }, blocks = [];
+let docRef = null, saveTimer = null, user = null, syncText = '本機模式';
+let screen = 'status';
+
 const firebaseConfig = {
-  apiKey: "AIzaSyCqYNDIkdcL4z8C831J6Y2kopfinKjSziE",
-  authDomain: "power-curve-bfb71.firebaseapp.com",
-  projectId: "power-curve-bfb71",
-  storageBucket: "power-curve-bfb71.firebasestorage.app",
-  messagingSenderId: "100155224305",
-  appId: "1:100155224305:web:3f116ee493692400c57950",
-  measurementId: "G-0MFJHR3B3C"
+  apiKey:"AIzaSyCqYNDIkdcL4z8C831J6Y2kopfinKjSziE", authDomain:"power-curve-bfb71.firebaseapp.com", projectId:"power-curve-bfb71",
+  storageBucket:"power-curve-bfb71.firebasestorage.app", messagingSenderId:"100155224305", appId:"1:100155224305:web:3f116ee493692400c57950",
 };
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
-const provider = new firebase.auth.GoogleAuthProvider();
-let docRef = null;
-let entries = []; // cards: {id, date, category, lift, exerciseName, rows:[{id,weight,reps,sets,rpe}]}
-let profile = { bodyweight: null, sex: 'male' };
-let category = 'main';
-let lift = 'squat';
-let volView = 'week';
-let histView = 'day';
-let histLimit = 14;
-let weekOffset = 0;
-let calcTouched = false;
-let blocks = [];      // {id, type, name, start, weeks}
-let blockEdit = null; // null 或 {id}（id 為 null 表示新增）
-let editing = null;   // 正在編輯的組 {cardId, rowId}
-let saveTimer = null;
+const auth = firebase.auth(), db = firebase.firestore();
 
-// ===== 工具函式 =====
-const $ = id => document.getElementById(id);
-const pad = n => String(n).padStart(2,'0');
-// 用本地時間格式化日期（原本 toISOString 會變成 UTC，台灣早上 8 點前會被算成前一天）
-function fmtDate(d) { return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
-function todayStr() { return fmtDate(new Date()); }
-function parseDate(s) { return new Date(s+'T00:00:00'); }
-function addDays(s, n) { const d = parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); }
-function daysBetween(a, b) { return Math.round((parseDate(b)-parseDate(a))/86400000); }
-function getMonday(s) {
-  const d = parseDate(s);
-  const day = d.getDay();
-  d.setDate(d.getDate() + ((day===0?-6:1)-day));
-  return fmtDate(d);
+function loadLocal() {
+  try { entries = migrateLegacyEntries(JSON.parse(localStorage.getItem('pl_entries')||'[]')); } catch { entries = []; }
+  try { profile = Object.assign({bodyweight:null,sex:'male'}, JSON.parse(localStorage.getItem('pl_profile')||'{}')); } catch {}
+  try { const b = JSON.parse(localStorage.getItem('pl_blocks')||'[]'); blocks = Array.isArray(b)?b:[]; } catch { blocks = []; }
 }
-function wd(s) { return WD_SUN[parseDate(s).getDay()]; }
-function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function round1(x) { return Math.round(x*10)/10; }
-function roundTo(x, step) { return Math.round(x/step)*step; }
-function fmtNum(n) { return Math.round(n).toLocaleString(); }
-
-function setSyncStatus(text, color) {
-  const el = $('syncStatus');
-  el.textContent = text;
-  el.style.color = color || '#8B92A3';
-}
-function renderAuthBar(user) {
-  const el = $('authBar');
-  if (user) {
-    const name = esc(user.email || user.displayName || '已登入');
-    el.innerHTML = `<span style="color:#8B92A3;font-size:13px;">已登入：${name}</span> <span class="pill small" style="background:#262b36;margin-left:8px;display:inline-block;" onclick="logout()">登出</span>`;
-  } else {
-    el.innerHTML = `<span class="pill small" style="background:#EDEAE1;color:#15171C;display:inline-block;" onclick="loginWithGoogle()">使用 Google 登入（跨裝置同步）</span>`;
-  }
-}
-function loginWithGoogle() {
-  auth.signInWithPopup(provider).catch(() => {
-    auth.signInWithRedirect(provider);
-  });
-}
-function logout() { auth.signOut(); }
-
-auth.onAuthStateChanged(async (user) => {
-  renderAuthBar(user);
-  if (!user) {
-    docRef = null;
-    setSyncStatus('未登入（僅本機儲存）', '#8B92A3');
-    loadLocalFallback();
-    refreshUI();
-    return;
-  }
-  docRef = db.collection('powerCurveEntries').doc(user.uid);
+auth.onAuthStateChanged(async u => {
+  user = u;
+  if (!u) { docRef = null; syncText = '本機模式'; loadLocal(); render(); return; }
+  docRef = db.collection('powerCurveEntries').doc(u.uid);
   try {
     const snap = await docRef.get();
     if (snap.exists && snap.data().entries) {
-      entries = migrateLegacyEntries(snap.data().entries);
-      const p = snap.data().profile;
-      profile = p ? { bodyweight: p.bodyweight ?? null, sex: p.sex || 'male' } : loadLocalProfile();
-      blocks = Array.isArray(snap.data().blocks) ? snap.data().blocks : loadLocalBlocks();
-      setSyncStatus('已同步', '#4FB477');
-    } else {
-      loadLocalFallback();
-      setSyncStatus('已同步', '#4FB477');
-      if (entries.length) save();
-    }
-  } catch (e) {
-    setSyncStatus('連線失敗，改用本機儲存', '#B72E3D');
-    loadLocalFallback();
-  }
-  refreshUI();
+      const d = snap.data();
+      entries = migrateLegacyEntries(d.entries);
+      profile = d.profile ? { bodyweight:d.profile.bodyweight??null, sex:d.profile.sex||'male' } : profile;
+      blocks = Array.isArray(d.blocks) ? d.blocks : blocks;
+    } else { loadLocal(); if (entries.length) save(); }
+    syncText = '雲端同步';
+  } catch { syncText = '連線失敗・本機模式'; loadLocal(); }
+  render();
 });
-
-function loadLocalProfile() {
-  try { return Object.assign({ bodyweight:null, sex:'male' }, JSON.parse(localStorage.getItem('pl_profile') || '{}')); }
-  catch { return { bodyweight:null, sex:'male' }; }
-}
-function loadLocalFallback() {
-  let raw = [];
-  try { raw = JSON.parse(localStorage.getItem('pl_entries') || '[]'); } catch { raw = []; }
-  entries = migrateLegacyEntries(raw);
-  profile = loadLocalProfile();
-  blocks = loadLocalBlocks();
-}
-function loadLocalBlocks() {
-  try { const b = JSON.parse(localStorage.getItem('pl_blocks') || '[]'); return Array.isArray(b) ? b : []; }
-  catch { return []; }
-}
-
-// ===== e1RM 與強度計算 =====
-function pctFor(reps, rpe) {
-  const t = RPE_TABLE[rpe];
-  if (!t) return null;
-  const r = Math.min(Math.max(Math.round(reps),1),10);
-  return t[r-1];
-}
-function calcE1RM(weight, reps, rpe) {
-  const p = pctFor(reps, rpe) ?? pctFor(reps, 8);
-  return weight / (p/100);
-}
-function rowVolume(row) { return row.weight * row.reps * row.sets; }
-function cardVolume(card) { return card.rows.reduce((s,r)=>s+rowVolume(r), 0); }
-function cardBestE1RM(card) {
-  if (card.category !== 'main') return null;
-  const withRpe = card.rows.filter(r => r.rpe != null);
-  if (!withRpe.length) return null;
-  return round1(Math.max(...withRpe.map(r => calcE1RM(r.weight, r.reps, r.rpe))));
-}
-function exerciseKeyOf(card) { return card.category==='main' ? card.lift : card.exerciseName; }
-function exerciseLabelOf(card) { return card.category==='main' ? MAIN_LIFTS[card.lift].label : card.exerciseName; }
-function exerciseColorOf(card) { return card.category==='main' ? MAIN_LIFTS[card.lift].color : ACCESSORY_COLOR; }
-function liftCards(k) { return entries.filter(c => c.category==='main' && c.lift===k); }
-
-// 某天的「目前 e1RM」：該日往前 windowDays 天內最佳；窗內沒資料就用更早最近的一次
-function refE1RM(k, upto, windowDays = 42) {
-  upto = upto || todayStr();
-  const from = addDays(upto, -windowDays);
-  let best = null, fallback = null, fbDate = '';
-  liftCards(k).forEach(c => {
-    if (c.date > upto) return;
-    const e = cardBestE1RM(c);
-    if (e == null) return;
-    if (c.date > from) { if (best == null || e > best) best = e; }
-    else if (c.date > fbDate) { fbDate = c.date; fallback = e; }
-  });
-  return best ?? fallback;
-}
-function allTimeBest(k) {
-  let best = null;
-  liftCards(k).forEach(c => {
-    const e = cardBestE1RM(c);
-    if (e != null && (!best || e > best.val)) best = { val: e, date: c.date };
-  });
-  return best;
-}
-// N 下最佳重量（做得到更多下也算）
-function repBest(k, n, excludeDate) {
-  let best = null;
-  liftCards(k).forEach(c => {
-    if (excludeDate && c.date === excludeDate) return;
-    c.rows.forEach(r => {
-      if (r.reps >= n && (!best || r.weight > best.weight)) best = { weight: r.weight, date: c.date };
-    });
-  });
-  return best;
-}
-function rowInol(row, ref) {
-  if (!ref) return 0;
-  const p = Math.min(row.weight/ref*100, 99);
-  return row.reps * row.sets / (100 - p);
-}
-function hardSets(row, ref) {
-  if (row.rpe != null) return row.rpe >= 7 ? row.sets : 0;
-  return (ref && row.weight/ref >= 0.70) ? row.sets : 0;
-}
-function cardInol(card) {
-  if (card.category !== 'main') return null;
-  const ref = refE1RM(card.lift, card.date);
-  if (!ref) return null;
-  return card.rows.reduce((s,r)=>s+rowInol(r, ref), 0);
-}
-function zoneIdx(p) { return ZONES.findIndex(z => p < z.max); }
-function linSlope(pts) {
-  const n = pts.length; if (n < 2) return null;
-  const mx = pts.reduce((s,p)=>s+p.x,0)/n, my = pts.reduce((s,p)=>s+p.y,0)/n;
-  let num = 0, den = 0;
-  pts.forEach(p => { num += (p.x-mx)*(p.y-my); den += (p.x-mx)**2; });
-  return den ? num/den : null;
-}
-function dots(total, bw, sex) {
-  const c = sex === 'female'
-    ? [-57.96288, 13.6175032, -0.1126655495, 0.0005158568, -0.0000010706]
-    : [-307.75076, 24.0900756, -0.1918759221, 0.0007391293, -0.000001093];
-  const b = sex === 'female' ? Math.min(Math.max(bw,40),150) : Math.min(Math.max(bw,40),210);
-  const den = c[0] + c[1]*b + c[2]*b**2 + c[3]*b**3 + c[4]*b**4;
-  return total * 500 / den;
-}
-
-// 舊版資料是「一筆一列」，自動合併成卡片格式
-function migrateLegacyEntries(raw) {
-  if (!Array.isArray(raw) || raw.length === 0) return Array.isArray(raw) ? raw : [];
-  const needsMigration = raw.some(e => !Array.isArray(e.rows));
-  if (!needsMigration) return raw;
-  const migrated = [];
-  raw.forEach(e => {
-    if (Array.isArray(e.rows)) { migrated.push(e); return; }
-    let card = migrated.find(c => c.date===e.date && c.category===e.category &&
-      (e.category==='main' ? c.lift===e.lift : c.exerciseName===e.exerciseName));
-    if (!card) {
-      card = {
-        id: e.id || (Date.now().toString()+Math.random().toString(36).slice(2)),
-        date: e.date, category: e.category,
-        lift: e.category==='main' ? e.lift : null,
-        exerciseName: e.category==='accessory' ? e.exerciseName : null,
-        rows: []
-      };
-      migrated.push(card);
-    }
-    card.rows.push({
-      id: (e.id || Date.now().toString()) + '_' + card.rows.length,
-      weight: e.weight, reps: e.reps, sets: e.sets || 1,
-      rpe: e.rpe != null ? e.rpe : null
-    });
-  });
-  return migrated;
-}
-
-function findOrCreateCard(date, cat, liftKey, exName) {
-  let card = entries.find(e => e.date===date && e.category===cat &&
-    (cat==='main' ? e.lift===liftKey : e.exerciseName===exName));
-  if (!card) {
-    card = { id: Date.now().toString()+Math.random().toString(36).slice(2), date, category:cat,
-      lift: cat==='main' ? liftKey : null, exerciseName: cat==='accessory' ? exName : null, rows: [] };
-    entries.push(card);
-  }
-  return card;
-}
-
 function save() {
   entries.sort((a,b)=>a.date.localeCompare(b.date));
-  renderAll();
   localStorage.setItem('pl_entries', JSON.stringify(entries));
   localStorage.setItem('pl_profile', JSON.stringify(profile));
   localStorage.setItem('pl_blocks', JSON.stringify(blocks));
   if (!docRef) return;
-  setSyncStatus('同步中...', '#8B92A3');
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    try {
-      await docRef.set({ entries, profile, blocks, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-      setSyncStatus('已同步', '#4FB477');
-    } catch (e) {
-      setSyncStatus('同步失敗，稍後會再試', '#B72E3D');
-    }
+    try { await docRef.set({ entries, profile, blocks, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); syncText = '雲端同步'; }
+    catch { syncText = '同步失敗'; }
   }, 500);
 }
+function login() { const p = new firebase.auth.GoogleAuthProvider(); auth.signInWithPopup(p).catch(() => auth.signInWithRedirect(p)); }
 
-$('fDate').value = todayStr();
+// ================= RPG 數值 =================
+const lvExp = L => 250*(L-1)*(L-1);
+function rpgState() {
+  const exp = Math.floor(entries.reduce((s,c)=>s+cardVolume(c),0)/10);
+  let L = 1; while (exp >= lvExp(L+1)) L++;
+  const cur = LIFTS.map(k => refE1RM(k) || 0);
+  const total = cur.every(Boolean) ? cur[0]+cur[1]+cur[2] : null;
+  const power = total && profile.bodyweight ? dots(total, profile.bodyweight, profile.sex) : null;
+  return { exp, L, cur, total, power };
+}
+function jobOf(sq, bp, dl) {
+  if (!sq || !bp || !dl) return '見習冒險者';
+  if (dl/sq > 1.25) return '破城者';
+  if (bp/sq > 0.75) return '重槍騎士';
+  if (dl/sq < 1.05) return '鐵壁守衛';
+  return '全能戰士';
+}
+function rankOf(p) {
+  return p >= 530 ? ['傳說','#f89838'] : p >= 470 ? ['秘銀','#78d8f8'] : p >= 400 ? ['黃金','#f8d030'] :
+         p >= 320 ? ['白銀','#d8dce8'] : p >= 250 ? ['青銅','#c88850'] : ['見習','#a8b0e0'];
+}
+const heroName = () => (user && user.displayName ? user.displayName.split(' ')[0] : '勇者');
 
-// ===== 表單 =====
-function renderCategoryPills() {
-  const el = $('categoryPills');
-  el.innerHTML = '';
-  [['main','主項'],['accessory','輔助動作']].forEach(([k,label]) => {
-    const d = document.createElement('div');
-    d.className = 'pill small' + (category===k ? ' active' : '');
-    d.style.background = category===k ? '#EDEAE1' : '#262b36';
-    d.textContent = label;
-    d.onclick = () => {
-      category = k; renderCategoryPills(); renderMainLiftPills(); renderLastPanel(); updatePreview();
-      if (k === 'accessory' && !$('exerciseName').value) openPicker();
-    };
-    el.appendChild(d);
-  });
-  $('mainLiftPills').style.display = category==='main' ? 'flex' : 'none';
-  $('accessoryNameField').style.display = category==='accessory' ? 'block' : 'none';
+// ================= 像素圖 =================
+const SPRITES = {
+  hero: { pal:{h:'#3a2410',s:'#f8c890',e:'#101010',t:'#d83838',a:'#f8c890',b:'#2848a8',k:'#583818',w:'#c8c8d8',g:'#505060'},
+    px:["g..........g","gwwwwwwwwwwg","g...hhhh...g","...hhhhhh...","...hssssh...","...sesses...","..a.ssss.a..","..attttttta.","...tttttt...","....tttt....","....bbbb....","...bb..bb...","...bb..bb...","..kkk..kkk.."] },
+  squat: { name:'岩石巨像', pal:{g:'#606878',G:'#9098a8',r:'#f83838'},
+    px:["....gggggg....","...gGGGGGGg...","..gGrGGGGrGg..","..gGGGGGGGGg..",".ggGGgggggGgg.","gGGGGGGGGGGGGg","gGgGGGGGGGGgGg","gGg.gGGGGg.gGg","ggg.gGGGGg.ggg","....gGggGg....","...ggg..ggg...","...ggg..ggg..."] },
+  bench: { name:'熔岩幼龍', pal:{r:'#a82818',O:'#f87828',y:'#f8f048',w:'#f8f8f8',R:'#c83828',o:'#f8c860'},
+    px:["..r........r..","..rr......rr..","...rOOOOOOr...","..OOyOOOOyOO..","..OOOOOOOOOO..","...OOwwwwOO...",".RR.OOOOOO.RR.","RRRROOooOORRRR","RR..OOooOO..RR","....OOooOO....","...OO....OO...","..OOO....OOO.."] },
+  deadlift: { name:'深淵鬼王', pal:{k:'#e8e8e8',P:'#8838b8',y:'#f8f048',w:'#f8f8f8'},
+    px:[".k..........k.",".kk........kk.","..kPPPPPPPPk..","..PPyPPPPyPP..","..PPPPPPPPPP..","..PwPwPwPwPP..","...PPPPPPPP...",".PPPPPPPPPPPP.","PP.PPPPPPPP.PP","P..PP....PP..P","...PP....PP...","..PPP....PPP.."] },
+  acc: { name:'荒野狼', pal:{b:'#384878',B:'#7888b8',y:'#f8e048',k:'#181818'},
+    px:["..b.......b...","..bb.....bb...","..bBBBBBBBb...",".bBByBBBByBb..",".bBBBBBBBBBb..","..bBBkkkBBb...","...bBBBBBb....","..bBBBBBBBBbbb",".bBBBBBBBBBBbb",".bBb.bBb.bBb..",".bb..bb..bb..."] },
+};
+function sprite(key, size) {
+  const s = SPRITES[key], h = s.px.length, w = Math.max(...s.px.map(r=>r.length));
+  let r = '';
+  s.px.forEach((row,y) => [...row].forEach((ch,x) => { if (s.pal[ch]) r += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${s.pal[ch]}"/>`; }));
+  return `<svg class="sprite" viewBox="0 0 ${w} ${h}" width="${size}" height="${size*h/w}" shape-rendering="crispEdges">${r}</svg>`;
 }
-function renderMainLiftPills() {
-  const el = $('mainLiftPills');
-  el.innerHTML = '';
-  Object.keys(MAIN_LIFTS).forEach(k => {
-    const d = document.createElement('div');
-    const active = lift===k;
-    d.className = 'pill' + (active?' active':'');
-    d.style.background = active ? MAIN_LIFTS[k].color : '#262b36';
-    d.textContent = MAIN_LIFTS[k].label;
-    d.onclick = () => { lift = k; renderMainLiftPills(); renderLastPanel(); updatePreview(); };
-    el.appendChild(d);
-  });
-}
+const monKey = c => c.category==='main' ? c.lift : 'acc';
+const exLabel = c => c.category==='main' ? MAIN_LIFTS[c.lift].label : c.exerciseName;
 
-function rowText(r) { return `${r.weight}kg × ${r.reps}${r.sets>1 ? ' × '+r.sets+'組' : ''}${r.rpe!=null ? ' @'+r.rpe : ''}`; }
-
-function currentExercise() {
-  if (category === 'main') return { cat:'main', key:lift, label:MAIN_LIFTS[lift].label, color:MAIN_LIFTS[lift].color };
-  const n = $('exerciseName').value.trim();
-  return n ? { cat:'accessory', key:n, label:n, color:ACCESSORY_COLOR } : null;
+// ================= 音效與震動 =================
+let actx = null;
+function beep(notes, type='square', len=.09) {
+  try {
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    notes.forEach((f,i) => { const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime+i*len;
+      o.type = type; o.frequency.value = f; g.gain.setValueAtTime(.05,t); g.gain.exponentialRampToValueAtTime(.001,t+len*1.2);
+      o.connect(g).connect(actx.destination); o.start(t); o.stop(t+len*1.3); });
+  } catch {}
 }
-function cardsOfExercise(ex) {
-  return entries.filter(c => c.category===ex.cat && (ex.cat==='main' ? c.lift===ex.key : c.exerciseName===ex.key));
-}
-
-// ===== 1. 上次成績 =====
-function renderLastPanel() {
-  const el = $('lastPanel');
-  const ex = currentExercise();
-  if (!ex) { el.style.display = 'none'; return; }
-  el.style.display = '';
-  const date = $('fDate').value || todayStr();
-  const all = cardsOfExercise(ex).sort((a,b)=>b.date.localeCompare(a.date));
-  const todayCard = all.find(c => c.date === date);
-  const prev = all.filter(c => c.date < date);
-  let html = '';
-  if (prev.length) {
-    const last = prev[0];
-    const e1 = cardBestE1RM(last);
-    html += `<div class="lp-head">
-      <div class="lp-title">上次<span class="lp-when">${last.date.slice(5)}（${wd(last.date)}）${daysBetween(last.date, date)} 天前</span></div>
-      <div class="lp-vol">${e1!=null ? 'e1RM '+e1 : fmtNum(cardVolume(last))+' kg'}</div>
-    </div>
-    <div class="chips">${last.rows.map(r => `<span class="chip" tabindex="0" role="button" title="帶入表單"
-      data-w="${r.weight}" data-r="${r.reps}" data-s="${r.sets}" data-rpe="${r.rpe ?? ''}">${rowText(r)}</span>`).join('')}</div>`;
-    const older = prev.slice(1,3);
-    if (older.length) {
-      html += `<details class="lp-more"><summary>更早 ${older.length} 次</summary>${older.map(c =>
-        `<div class="lp-old"><span>${c.date.slice(5)}（${wd(c.date)}）</span><span>${c.rows.map(rowText).join('<br>')}</span></div>`).join('')}</details>`;
-    }
-  } else if (!todayCard) {
-    html = '<div class="lp-sub" style="margin:0">第一次記錄這個動作</div>';
-  }
-  if (todayCard) {
-    html += `<div class="${prev.length ? 'lp-section' : ''}"><div class="lp-sub">今天已做</div>
-      <div class="chips">${todayCard.rows.map(r => isEditing(todayCard, r, 'panel') ? rowEditorHtml(todayCard, r)
-        : `<span class="chip done js-edit" tabindex="0" role="button" title="點一下編輯" data-card="${todayCard.id}" data-row="${r.id}">${rowText(r)}</span>`).join('')}</div></div>`;
-  }
-  el.innerHTML = html;
-}
-function fillFromChip(c) {
-  $('fWeight').value = c.dataset.w;
-  $('fReps').value = c.dataset.r;
-  $('fSets').value = c.dataset.s;
-  $('fRpe').value = c.dataset.rpe || '';
-  updatePreview();
-}
-$('lastPanel').addEventListener('click', e => { const c = e.target.closest('.chip:not(.done)'); if (c) fillFromChip(c); });
-$('lastPanel').addEventListener('keydown', e => { const c = e.target.closest('.chip:not(.done)'); if (c && (e.key==='Enter'||e.key===' ')) { e.preventDefault(); fillFromChip(c); } });
-
-function updatePreview() {
-  const w = parseFloat($('fWeight').value);
-  const r = parseInt($('fReps').value);
-  const s = parseInt($('fSets').value) || 1;
-  const rpeRaw = $('fRpe').value;
-  const date = $('fDate').value || todayStr();
-  const el = $('preview');
-  const lines = [];
-  if (category === 'main') {
-    const ref = refE1RM(lift, date);
-    if (!w && r && rpeRaw !== '' && ref) {
-      lines.push(`建議 ${roundTo(ref*pctFor(r,rpeRaw)/100, 2.5)} kg`);
-    }
-    if (w && r) {
-      if (rpeRaw !== '') {
-        const e1 = round1(calcE1RM(w, r, rpeRaw));
-        const best = allTimeBest(lift);
-        lines.push(`e1RM ${e1} kg${best && e1 > best.val ? '  🔥 新紀錄' : ''}`);
-      } else {
-        lines.push(`量 ${fmtNum(w*r*s)} kg`);
-      }
-      if (ref) {
-        const p = w/ref*100;
-        const blk = blockAt(date);
-        const t = blk ? BLOCK_TYPES[blk.type] : null;
-        lines.push(`${Math.round(p)}% e1RM${t && (p < t.pct[0] || p > t.pct[1]) ? `（本期 ${t.pct[0]}–${t.pct[1]}%）` : ''}`);
-      }
-      const rb = repBest(lift, r, date);
-      if (rb && w > rb.weight) lines.push(`🏅 ${r} 下新紀錄`);
-    }
-  } else if (w && r) {
-    lines.push(`量 ${fmtNum(w*r*s)} kg`);
-    const ex = currentExercise();
-    if (ex) {
-      const prev = cardsOfExercise(ex).filter(c => c.date < date).sort((a,b)=>b.date.localeCompare(a.date))[0];
-      if (prev) {
-        const top = Math.max(...prev.rows.map(x=>x.weight));
-        if (w > top) lines.push(`比上次 +${round1(w-top)} kg`);
-      }
-    }
-  }
-  el.innerHTML = lines.map(esc).join('　');
-  el.style.color = category==='main' ? MAIN_LIFTS[lift].color : ACCESSORY_COLOR;
-}
-['fWeight','fReps','fSets','fRpe'].forEach(id => $(id).addEventListener('input', updatePreview));
-$('fDate').addEventListener('change', () => { renderLastPanel(); updatePreview(); });
-$('exerciseName').addEventListener('input', () => { renderLastPanel(); updatePreview(); });
-
-function handleAdd() {
-  const w = parseFloat($('fWeight').value);
-  const r = parseInt($('fReps').value);
-  const s = parseInt($('fSets').value) || 1;
-  const rpeRaw = $('fRpe').value;
-  const date = $('fDate').value;
-  const exerciseName = $('exerciseName').value.trim();
-  const errEl = $('formError');
-  if (!date) { errEl.textContent = '請選擇日期'; return; }
-  if (!w || !r) { errEl.textContent = '請輸入重量與次數'; return; }
-  if (category==='accessory' && !exerciseName) { errEl.textContent = '請先選擇動作'; openPicker(); return; }
-  errEl.textContent = '';
-  const card = findOrCreateCard(date, category, lift, exerciseName);
-  card.rows.push({
-    id: Date.now().toString()+Math.random().toString(36).slice(2),
-    weight:w, reps:r, sets:s, rpe: rpeRaw==='' ? null : parseFloat(rpeRaw)
-  });
-  $('fWeight').value='';
-  $('fReps').value='';
-  $('fRpe').value='';
-  $('fSets').value='1';
-  save();
-}
-function deleteRow(cardId, rowId) {
-  const card = entries.find(c=>c.id===cardId);
-  if (!card) return;
-  card.rows = card.rows.filter(r=>r.id!==rowId);
-  if (card.rows.length===0) entries = entries.filter(c=>c.id!==cardId);
-  save();
-}
-function deleteCard(cardId) {
-  if (!confirm('確定刪除這張卡的所有組數？')) return;
-  entries = entries.filter(c=>c.id!==cardId);
-  save();
+const SFX = { cursor:()=>beep([1200],'square',.03), hit:()=>beep([220,110],'sawtooth',.05), crit:()=>beep([880,440,220],'sawtooth',.05),
+  ok:()=>beep([660,990],'square',.06), win:()=>beep([523,523,523,659,784,659,784,1047],'square',.11), lv:()=>beep([784,988,1175,1568],'triangle',.12),
+  rest:()=>beep([523,659,784,659,523],'triangle',.15) };
+function buzz(strong) {
+  const H = window.Capacitor?.Plugins?.Haptics;
+  if (H) H.impact({ style: strong ? 'HEAVY' : 'LIGHT' }).catch(()=>{});
+  else if (navigator.vibrate) navigator.vibrate(strong ? [30,30,50] : 12);
 }
 
-// ===== PR =====
-function renderPRs() {
-  const el = $('prGrid');
-  el.innerHTML = '';
-  let total = 0, complete = true;
-  Object.keys(MAIN_LIFTS).forEach(k => {
+// ================= 共用 UI =================
+const $ = id => document.getElementById(id);
+const win = (title, body, extra='') => `<div class="win" ${extra}>${title?`<div class="win-t">${title}</div>`:''}${body}</div>`;
+const bar = (v, max, cls='') => `<div class="bar ${cls}"><div style="width:${Math.max(0,Math.min(100,max?v/max*100:0))}%"></div></div>`;
+function openModal(html) { $('modalWin').innerHTML = html; $('modal').hidden = false; }
+function closeModal() { $('modal').hidden = true; }
+$('modal').addEventListener('click', e => { if (e.target === $('modal')) closeModal(); });
+function lvUpFx(L) {
+  const d = document.createElement('div'); d.className = 'lvup'; d.innerHTML = `<span>LEVEL UP！ Lv ${L}</span>`;
+  document.body.appendChild(d); setTimeout(()=>d.remove(), 1700); SFX.lv(); buzz(true);
+}
+
+const MENU = [['status','狀態'],['battle','戰鬥'],['log','日誌'],['map','地圖'],['intel','情報']];
+function renderMenu() {
+  $('menu').innerHTML = MENU.map(([k,l]) => `<button class="cmd${screen===k?' sel':''}" data-go="${k}">${l}</button>`).join('');
+}
+$('menu').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return;
+  if (B.active && b.dataset.go !== 'battle') { if (!confirm('要逃跑嗎？這一組還沒結束。')) return; endBattle(); }
+  screen = b.dataset.go; SFX.cursor(); render(); window.scrollTo(0,0); });
+function render() { renderMenu(); ({status:renderStatus, battle:renderBattleSelect, log:renderLog, map:renderMap, intel:renderIntel})[screen](); }
+// ================= 狀態畫面 =================
+function renderStatus() {
+  const s = rpgState(), lo = lvExp(s.L), hi = lvExp(s.L+1);
+  const rk = s.power != null ? rankOf(s.power) : null;
+  const statRows = LIFTS.map((k,i) => {
     const best = allTimeBest(k);
-    if (best) total += best.val; else complete = false;
-    const div = document.createElement('div');
-    div.className = 'pr-card';
-    div.style.borderLeft = '4px solid ' + MAIN_LIFTS[k].color;
-    div.innerHTML = `<div style="color:#8B92A3;font-size:12px;margin-bottom:6px;">🏆 ${MAIN_LIFTS[k].label} 最高 e1RM</div>
-      <div class="pr-num">${best ? best.val+' kg' : '—'}</div>
-      ${best ? `<div class="pr-sub">${best.date}</div>` : ''}`;
-    el.appendChild(div);
-  });
-  const div = document.createElement('div');
-  div.className = 'pr-card';
-  div.style.borderLeft = '4px solid #EDEAE1';
-  const bw = profile.bodyweight;
-  const d = complete && bw ? round1(dots(total, bw, profile.sex)) : null;
-  div.innerHTML = `<div style="color:#8B92A3;font-size:12px;margin-bottom:6px;">Σ 三項總和</div>
-    <div class="pr-num">${complete ? round1(total)+' kg' : '—'}</div>
-    <div class="pr-sub">${d!=null ? 'DOTS '+d : (complete ? '填入體重即可算 DOTS' : '三項都有 RPE 紀錄後顯示')}</div>`;
-  el.appendChild(div);
-}
-
-// ===== 圖表 =====
-function svgDualLineChart(containerId, labels, seriesA, seriesB, colorMap, bands) {
-  const el = $(containerId);
-  if (labels.length === 0) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  const W=800,H=260,padL=48,padR=10,padT=14,padB=30;
-  const allA = Object.values(seriesA).flat().filter(v=>v!=null);
-  const allB = Object.values(seriesB).flat().filter(v=>v!=null);
-  const minA = 0;
-  const maxA = Math.max(300, Math.ceil((allA.length ? Math.max(...allA) : 0)/25)*25);
-  const tickStep = 25;
-  const minB = allB.length ? Math.min(...allB)*0.9 : 0, maxB = allB.length ? Math.max(...allB)*1.1 : 1;
-  const x = i => padL + (labels.length<=1?0:(i/(labels.length-1))*(W-padL-padR));
-  const yA = v => padT + (1-(v-minA)/(maxA-minA||1))*(H-padT-padB);
-  const yB = v => padT + (1-(v-minB)/(maxB-minB||1))*(H-padT-padB);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:260px;">`;
-  const stepX = labels.length > 1 ? (W-padL-padR)/(labels.length-1) : (W-padL-padR);
-  (bands || []).forEach(b => {
-    const x0 = Math.max(padL, x(b.i) - stepX/2), x1 = Math.min(W-padR, x(b.j) + stepX/2);
-    svg += `<rect x="${x0}" y="${padT}" width="${Math.max(2, x1-x0)}" height="${H-padT-padB}" fill="${b.color}" opacity="0.12"/>`;
-    svg += `<text x="${x0+4}" y="${padT+10}" style="fill:${b.color};font-weight:700;">${esc(b.label)}</text>`;
-  });
-  for (let val=minA; val<=maxA; val+=tickStep) {
-    const yy = yA(val);
-    svg += `<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="#20242c" stroke-width="1"/>`;
-    svg += `<text x="${padL-8}" y="${yy+3}" text-anchor="end">${val}kg</text>`;
-  }
-  svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
-  labels.forEach((d,i) => { if (i%Math.ceil(labels.length/8||1)===0) svg += `<text x="${x(i)}" y="${H-10}" text-anchor="middle">${d.slice(5)}</text>`; });
-  function drawSeries(seriesMap, yFn, dashed) {
-    Object.keys(seriesMap).forEach(key => {
-      const pts = seriesMap[key].map((v,i)=>({i,v})).filter(p=>p.v!=null);
-      if (!pts.length) return;
-      let path = '';
-      pts.forEach((p,idx) => { path += (idx===0?'M':'L')+x(p.i)+','+yFn(p.v)+' '; });
-      svg += `<path d="${path}" fill="none" stroke="${colorMap[key]}" stroke-width="2.5"${dashed?' stroke-dasharray="5 4"':''}/>`;
-      pts.forEach(p => svg += `<circle cx="${x(p.i)}" cy="${yFn(p.v)}" r="3" fill="${colorMap[key]}"${dashed?' opacity="0.6"':''}><title>${labels[p.i]}：${p.v}kg</title></circle>`);
-    });
-  }
-  drawSeries(seriesA, yA, false);
-  drawSeries(seriesB, yB, true);
-  svg += `</svg>`;
-  el.innerHTML = svg;
-}
-
-function renderE1rmChart() {
-  const mains = entries.filter(e=>e.category==='main');
-  const dates = [...new Set(mains.map(e=>e.date))].sort();
-  const e1rmSeries = {}, colorMap = {};
-  Object.keys(MAIN_LIFTS).forEach(k => {
-    colorMap[k] = MAIN_LIFTS[k].color;
-    e1rmSeries[k] = dates.map(d => {
-      const card = mains.find(e=>e.lift===k && e.date===d);
-      return card ? cardBestE1RM(card) : null;
-    });
-  });
-  const bands = [];
-  sortedBlocks().forEach(b => {
-    const end = blockEnd(b);
-    const i = dates.findIndex(d => d >= b.start && d <= end);
-    if (i < 0) return;
-    let j = i; while (j+1 < dates.length && dates[j+1] <= end) j++;
-    bands.push({ i, j, color: BLOCK_TYPES[b.type].color, label: blockLabel(b) });
-  });
-  svgDualLineChart('e1rmChart', dates, e1rmSeries, {}, colorMap, bands);
-  const legend = Object.keys(MAIN_LIFTS).map(k=>`<span><span class="sw" style="background:${MAIN_LIFTS[k].color}"></span>${MAIN_LIFTS[k].label}</span>`).join('');
-  $('e1rmChart').innerHTML += `<div class="legend">${legend}</div>`;
-}
-
-// ===== 輔助動作選擇器 =====
-function accessoryStats() {
-  const m = {};
-  entries.forEach(c => {
-    if (c.category !== 'accessory' || !c.exerciseName) return;
-    const s = m[c.exerciseName] || (m[c.exerciseName] = { name: c.exerciseName, count: 0, last: '' });
-    s.count++;
-    if (c.date > s.last) s.last = c.date;
-  });
-  return Object.values(m);
-}
-function relDay(d) {
-  const n = daysBetween(d, todayStr());
-  return n <= 0 ? '今天' : n === 1 ? '昨天' : n < 30 ? `${n} 天前` : d.slice(5);
-}
-function pickItemHtml(s, cur) {
-  return `<button type="button" class="pick-item${s.name === cur ? ' sel' : ''}" data-name="${esc(s.name)}">
-    <b>${esc(s.name)}</b><small>${s.count} 次　${relDay(s.last)}</small></button>`;
-}
-function renderPickList() {
-  const q = $('pickSearch').value.trim();
-  const ql = q.toLowerCase();
-  const cur = $('exerciseName').value;
-  const all = accessoryStats();
-  let html = '';
-  if (q) {
-    const hits = all.filter(s => s.name.toLowerCase().includes(ql)).sort((a,b) => b.last.localeCompare(a.last));
-    // 有符合的就先列出既有動作，新增按鈕放後面；完全沒有才把新增放第一個
-    if (hits.length) html += `<div class="pick-grid">${hits.map(s => pickItemHtml(s, cur)).join('')}</div>`;
-    if (!all.some(s => s.name.toLowerCase() === ql)) {
-      html += `<button type="button" class="pick-new${hits.length ? ' secondary' : ''}" data-name="${esc(q)}">＋ 新增「${esc(q)}」</button>`;
-    }
-  } else if (!all.length) {
-    html = '<div class="empty">還沒有輔助動作。在上方輸入名稱，就能新增第一個。</div>';
-  } else {
-    const recent = [...all].sort((a,b) => b.last.localeCompare(a.last)).slice(0, 6);
-    const rest = all.filter(s => !recent.includes(s)).sort((a,b) => b.count - a.count || a.name.localeCompare(b.name, 'zh-Hant'));
-    html += `<div class="pick-sec">最近練過</div><div class="pick-grid">${recent.map(s => pickItemHtml(s, cur)).join('')}</div>`;
-    if (rest.length) html += `<div class="pick-sec">其他（依次數）</div><div class="pick-grid">${rest.map(s => pickItemHtml(s, cur)).join('')}</div>`;
-  }
-  $('pickList').innerHTML = html;
-}
-let pickerReturnFocus = null;
-function openPicker() {
-  pickerReturnFocus = document.activeElement;
-  $('pickSearch').value = '';
-  renderPickList();
-  $('pickSheet').hidden = false;
-  document.body.style.overflow = 'hidden';
-  $('pickList').scrollTop = 0;
-  // 手機不自動聚焦搜尋框，避免鍵盤一開就蓋住清單
-  if (!matchMedia('(pointer: coarse)').matches) $('pickSearch').focus();
-}
-function closePicker() {
-  $('pickSheet').hidden = true;
-  document.body.style.overflow = '';
-  if (pickerReturnFocus && pickerReturnFocus.focus) pickerReturnFocus.focus();
-}
-function selectAccessory(name) {
-  name = name.trim();
-  if (!name) return;
-  $('exerciseName').value = name;
-  $('pickFieldText').textContent = name;
-  $('pickField').classList.remove('placeholder');
-  closePicker();
-  renderLastPanel(); updatePreview();
-}
-$('pickSearch').addEventListener('input', renderPickList);
-$('pickSearch').addEventListener('keydown', e => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  const q = $('pickSearch').value.trim();
-  if (!q) return;
-  const all = accessoryStats();
-  const exact = all.find(s => s.name.toLowerCase() === q.toLowerCase());
-  selectAccessory(exact ? exact.name : q);
-});
-$('pickList').addEventListener('click', e => { const b = e.target.closest('[data-name]'); if (b) selectAccessory(b.dataset.name); });
-$('pickSheet').addEventListener('click', e => { if (e.target === $('pickSheet')) closePicker(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('pickSheet').hidden) closePicker(); });
-
-function renderAccessoryDatalist() {
-  if (!$('pickSheet').hidden) renderPickList();
-}
-function renderTrendOptions() {
-  const sel = $('trendPick');
-  const cur = sel.value;
-  const mainOpts = Object.keys(MAIN_LIFTS).map(k=>`<option value="main:${k}">${MAIN_LIFTS[k].label}</option>`).join('');
-  const accNames = [...new Set(entries.filter(e=>e.category==='accessory').map(e=>e.exerciseName))].sort();
-  const accOpts = accNames.map(n=>`<option value="acc:${esc(n)}">${esc(n)}</option>`).join('');
-  sel.innerHTML = '<option value="">選擇動作</option>' + mainOpts + accOpts;
-  sel.value = [...sel.options].some(o=>o.value===cur) ? cur : '';
-}
-function svgVolumeChart(containerId, dates, values, color) {
-  const el = $(containerId);
-  if (!dates.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  const W=800,H=290,padL=44,padR=10,padT=14,padB=54;
-  const min = Math.min(...values)*0.9, max = Math.max(...values)*1.1;
-  const x = i => padL + (dates.length<=1?0:(i/(dates.length-1))*(W-padL-padR));
-  const y = v => padT + (1-(v-min)/((max-min)||1))*(H-padT-padB);
-  let svg = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:290px;">`;
-  svg += `<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="#262b36"/>`;
-  let path = '';
-  dates.forEach((d,i) => { path += (i===0?'M':'L')+x(i)+','+y(values[i])+' '; });
-  svg += `<path d="${path}" fill="none" stroke="${color}" stroke-width="2.5"/>`;
-  const step = Math.ceil(dates.length/12);
-  dates.forEach((d,i) => {
-    svg += `<circle cx="${x(i)}" cy="${y(values[i])}" r="3" fill="${color}"><title>${d}：${Math.round(values[i])}kg</title></circle>`;
-    if (i % step === 0 || i === dates.length-1) {
-      svg += `<text x="${x(i)}" y="${H-padB+16}" text-anchor="middle">${d.slice(5)}</text>`;
-      svg += `<text x="${x(i)}" y="${H-padB+30}" text-anchor="middle" style="fill:${color};font-weight:700;">${Math.round(values[i])}kg</text>`;
-    }
-  });
-  svg += `</svg>`;
-  el.innerHTML = svg;
-}
-function renderAccChart() {
-  const pick = $('trendPick').value;
-  const el = $('accChart');
-  if (!pick) { el.innerHTML = '<div class="empty">選一個動作查看總量趨勢。</div>'; return; }
-  const [kind, key] = pick.split(/:(.+)/);
-  const cards = entries.filter(c => kind==='main' ? (c.category==='main' && c.lift===key) : (c.category==='accessory' && c.exerciseName===key))
-    .sort((a,b)=>a.date.localeCompare(b.date));
-  if (!cards.length) { el.innerHTML = '<div class="empty">這個動作還沒有紀錄。</div>'; return; }
-  const color = kind==='main' ? MAIN_LIFTS[key].color : ACCESSORY_COLOR;
-  svgVolumeChart('accChart', cards.map(c=>c.date), cards.map(c=>cardVolume(c)), color);
-}
-$('trendPick').addEventListener('change', renderAccChart);
-
-// ===== 總量表 =====
-function renderVolPills() {
-  const el = $('volPills');
-  el.innerHTML = '';
-  [['day','日'],['week','週'],['month','月']].forEach(([k,label]) => {
-    const d = document.createElement('div');
-    d.className = 'pill small' + (volView===k ? ' active' : '');
-    d.style.background = volView===k ? '#EDEAE1' : '#262b36';
-    d.textContent = label;
-    d.onclick = () => { volView = k; renderVolPills(); renderVolTable(); };
-    el.appendChild(d);
-  });
-}
-function renderVolTable() {
-  const keyFn = volView==='day' ? d=>d : volView==='week' ? getMonday : d=>d.slice(0,7);
-  const matrix = {}, labels = {}, order = [];
-  Object.keys(MAIN_LIFTS).forEach(k => { matrix[k]={}; labels[k]=MAIN_LIFTS[k].label; order.push(k); });
-  entries.forEach(card => {
-    const key = exerciseKeyOf(card);
-    if (!matrix[key]) { matrix[key] = {}; labels[key] = exerciseLabelOf(card); order.push(key); }
-    const period = keyFn(card.date);
-    matrix[key][period] = (matrix[key][period]||0) + cardVolume(card);
-  });
-  const periods = [...new Set(entries.map(c=>keyFn(c.date)))].sort();
-  const el = $('volTable');
-  if (!periods.length) { el.innerHTML = '<div class="empty">還沒有資料。</div>'; return; }
-  const head = p => volView==='day' ? `${p.slice(5)}（${wd(p)}）` : volView==='week' ? `${p.slice(5)} 週` : p;
-  let html = '<table class="voltable"><thead><tr><th>動作</th>' + periods.map(p=>`<th>${head(p)}</th>`).join('') + '<th>總計</th></tr></thead><tbody>';
-  order.forEach(key => {
-    const rowVals = periods.map(p => matrix[key][p] || 0);
-    const total = rowVals.reduce((a,b)=>a+b,0);
-    if (total === 0 && !MAIN_LIFTS[key]) return;
-    html += `<tr><td>${esc(labels[key])}</td>` + rowVals.map(v=>`<td>${v?fmtNum(v):'—'}</td>`).join('') + `<td class="total">${fmtNum(total)}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  el.innerHTML = html;
-}
-
-// ===== 2. 以天為單位：週視圖 + 熱力圖 =====
-function cardOrder(c) { return c.category==='main' ? Object.keys(MAIN_LIFTS).indexOf(c.lift) : 10; }
-function dayCards(date) { return entries.filter(c=>c.date===date).sort((a,b)=>cardOrder(a)-cardOrder(b)); }
-function dailyVolumeMap() {
-  const m = {};
-  entries.forEach(c => { m[c.date] = (m[c.date]||0) + cardVolume(c); });
-  return m;
-}
-function shiftWeek(n) { weekOffset = n === 0 ? 0 : weekOffset + n; renderWeek(); }
-function renderWeek() {
-  const today = todayStr();
-  const mon = addDays(getMonday(today), weekOffset*7);
-  const sun = addDays(mon, 6);
-  const prefix = weekOffset===0 ? '本週 ' : weekOffset===-1 ? '上週 ' : '';
-  $('weekLabel').textContent = `${prefix}${mon.slice(5)} – ${sun.slice(5)}`;
-  let trained = 0, vol = 0;
-  $('weekStrip').innerHTML = [0,1,2,3,4,5,6].map(i => {
-    const d = addDays(mon, i);
-    const cs = dayCards(d);
-    if (cs.length) trained++;
-    cs.forEach(c => vol += cardVolume(c));
-    const tags = cs.map(c => c.category==='main'
-      ? `<span class="tag" style="background:${MAIN_LIFTS[c.lift].color}">${MAIN_LIFTS[c.lift].label}</span>`
-      : `<span class="tag acc">${esc(c.exerciseName)}</span>`).join('');
-    const empty = d > today ? '' : '<span style="font-size:11px;color:#8B92A3">休息</span>';
-    return `<div class="wday${d===today?' today':''}${cs.length?'':' rest'}" data-date="${d}" ${cs.length?'tabindex="0" role="button"':''}>
-      <div class="wday-h"><span>${WD_MON[i]}</span><span>${d.slice(8)}</span></div>${tags || empty}</div>`;
+    return `<div class="row"><span>${['STR 力量','POW 爆發','VIT 韌性'][i]}<span class="dim">（${MAIN_LIFTS[k].label}）</span></span>
+      <span class="gold big" style="font-size:22px">${s.cur[i] ? Math.round(s.cur[i]) : '—'}</span></div>
+      <div class="row" style="font-size:12px"><span class="dim">最高 ${best ? best.val : '—'}</span>${bar(s.cur[i], best?best.val:1, 'mp')}</div>`;
   }).join('');
-  const blk = blockAt(mon) || blockAt(sun);
-  const blkTxt = blk ? `${blockLabel(blk)} 第 ${blockWeek(blk, blockAt(mon) ? mon : blk.start)} 週　` : '';
-  $('weekSummary').textContent = `${blkTxt}${trained} 天　${fmtNum(vol)} kg`;
-}
-$('weekStrip').addEventListener('click', e => {
-  const d = e.target.closest('.wday');
-  if (d && !d.classList.contains('rest')) jumpToDay(d.dataset.date);
-});
-$('weekStrip').addEventListener('keydown', e => {
-  const d = e.target.closest('.wday');
-  if (d && (e.key==='Enter'||e.key===' ') && !d.classList.contains('rest')) { e.preventDefault(); jumpToDay(d.dataset.date); }
-});
-
-function renderHeatmap() {
-  const today = todayStr();
-  const WEEKS = 20;
-  const start = addDays(getMonday(today), -7*(WEEKS-1));
-  const vm = dailyVolumeMap();
-  const max = Math.max(1, ...Object.values(vm));
-  let html = '', lastMonth = '';
-  for (let w = 0; w < WEEKS; w++) {
-    const mon = addDays(start, w*7);
-    const month = mon.slice(5,7);
-    html += `<div class="heat-col"><div class="heat-month">${month!==lastMonth ? parseInt(month)+'月' : ''}</div>`;
-    lastMonth = month;
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(mon, i);
-      if (d > today) { html += `<div class="heat-cell future"></div>`; continue; }
-      const v = vm[d] || 0;
-      const names = dayCards(d).map(exerciseLabelOf).join('、');
-      const bg = v ? `background:rgba(79,180,119,${(0.25+0.75*v/max).toFixed(2)})` : '';
-      html += `<div class="heat-cell${v?' has':''}" style="${bg}" data-date="${d}" title="${d}（${wd(d)}）${v ? esc(names)+'，'+fmtNum(v)+'kg' : '休息'}"></div>`;
-    }
-    html += '</div>';
-  }
-  $('heatmap').innerHTML = html;
-  const from28 = addDays(today, -28);
-  const days28 = Object.keys(vm).filter(d => d > from28 && d <= today).length;
-  $('heatSummary').textContent = `近 28 天練 ${days28} 天`;
-}
-$('heatmap').addEventListener('click', e => { const c = e.target.closest('.heat-cell.has'); if (c) jumpToDay(c.dataset.date); });
-
-function sortedDaysDesc() { return [...new Set(entries.map(c=>c.date))].sort().reverse(); }
-function jumpToDay(date) {
-  histView = 'day';
-  renderHistPills();
-  const idx = sortedDaysDesc().indexOf(date);
-  if (idx < 0) return;
-  if (idx >= histLimit) histLimit = idx + 1;
-  renderHistory();
-  const el = $('day-'+date);
-  if (el) {
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('flash');
-    setTimeout(() => el.classList.remove('flash'), 1600);
-  }
-}
-
-// ===== 歷史紀錄 =====
-function renderHistPills() {
-  const el = $('histPills');
-  el.innerHTML = '';
-  [['day','依日期'],['lift','依動作']].forEach(([k,label]) => {
-    const d = document.createElement('div');
-    d.className = 'pill small' + (histView===k ? ' active' : '');
-    d.style.background = histView===k ? '#EDEAE1' : '#262b36';
-    d.textContent = label;
-    d.onclick = () => { histView = k; renderHistPills(); renderHistory(); };
-    el.appendChild(d);
-  });
-}
-function isEditing(card, r, where) { return editing && editing.where === where && editing.cardId === card.id && editing.rowId === r.id; }
-function rowHtml(card, r, ref) {
-  if (isEditing(card, r, 'hist')) return rowEditorHtml(card, r);
-  const pct = ref ? ` <span class="muted">${Math.round(r.weight/ref*100)}%</span>` : '';
-  const ids = `data-card="${card.id}" data-row="${r.id}"`;
-  return `<div class="hcard-row">
-    <span class="mono row-text js-edit" ${ids} title="點一下編輯">${rowText(r)}${pct}</span>
-    <span class="row-actions">
-      <span class="trash js-edit" ${ids} title="編輯" role="button" tabindex="0">✎</span>
-      <span class="trash" title="刪除這組" role="button" onclick="deleteRow('${card.id}','${r.id}')">✕</span>
-    </span></div>`;
-}
-function rowEditorHtml(card, r) {
-  const opts = `<option value=""${r.rpe==null?' selected':''}>—</option>` +
-    RPE_OPTIONS.map(v => `<option${r.rpe===v?' selected':''}>${v}</option>`).join('');
-  return `<div class="row-editor" data-card="${card.id}" data-row="${r.id}">
-    <div class="ed-grid">
-      <span>kg</span><span>次</span><span>組</span><span>RPE</span>
-      <input class="ed-w" type="number" inputmode="decimal" step="0.5" value="${r.weight}" aria-label="重量">
-      <input class="ed-r" type="number" inputmode="numeric" value="${r.reps}" aria-label="次數">
-      <input class="ed-s" type="number" inputmode="numeric" value="${r.sets}" aria-label="組數">
-      <select class="ed-rpe" aria-label="RPE">${opts}</select>
-    </div>
-    <div class="ed-actions"><span class="ed-err"></span>
-      <button class="ed-btn ed-cancel" data-act="cancel">取消</button>
-      <button class="ed-btn ed-save" data-act="save">儲存</button>
-    </div></div>`;
-}
-function startEdit(cardId, rowId, where) {
-  editing = { cardId, rowId, where };
-  renderHistory(); renderLastPanel();
-  const inp = document.querySelector((where === 'panel' ? '#lastPanel' : '#historyList') + ' .row-editor .ed-w');
-  if (inp) { inp.focus(); inp.select(); }
-}
-function cancelEdit() { editing = null; renderHistory(); renderLastPanel(); }
-function saveEdit(ed) {
-  const card = entries.find(c => c.id === ed.dataset.card);
-  const row = card && card.rows.find(r => r.id === ed.dataset.row);
-  if (!row) { cancelEdit(); return; }
-  const w = parseFloat(ed.querySelector('.ed-w').value);
-  const reps = parseInt(ed.querySelector('.ed-r').value);
-  const sets = parseInt(ed.querySelector('.ed-s').value);
-  const rpeRaw = ed.querySelector('.ed-rpe').value;
-  if (!(w > 0) || !(reps > 0) || !(sets > 0)) { ed.querySelector('.ed-err').textContent = '重量、次數、組數要大於 0'; return; }
-  Object.assign(row, { weight: w, reps, sets, rpe: rpeRaw === '' ? null : parseFloat(rpeRaw) });
-  editing = null;
-  save();
-}
-document.addEventListener('click', e => {
-  const t = e.target.closest('.js-edit');
-  if (t) { startEdit(t.dataset.card, t.dataset.row, t.closest('#lastPanel') ? 'panel' : 'hist'); return; }
-  const b = e.target.closest('.row-editor [data-act]');
-  if (b) { const ed = b.closest('.row-editor'); b.dataset.act === 'save' ? saveEdit(ed) : cancelEdit(); }
-});
-document.addEventListener('keydown', e => {
-  const t = e.target.closest('.js-edit');
-  if (t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); startEdit(t.dataset.card, t.dataset.row, t.closest('#lastPanel') ? 'panel' : 'hist'); return; }
-  const ed = e.target.closest('.row-editor');
-  if (!ed) return;
-  if (e.key === 'Enter') { e.preventDefault(); saveEdit(ed); }
-  if (e.key === 'Escape') cancelEdit();
-});
-function renderHistory() {
-  const el = $('historyList');
-  if (!entries.length) { el.innerHTML = '<div class="empty">還沒有紀錄，從上方「新增紀錄」加入第一組。</div>'; return; }
-  if (histView === 'day') renderHistoryByDay(el); else renderHistoryByLift(el);
-}
-function renderHistoryByDay(el) {
-  const days = sortedDaysDesc();
-  const shown = days.slice(0, histLimit);
-  let html = shown.map((date, idx) => {
-    const cards = dayCards(date);
-    const vol = cards.reduce((s,c)=>s+cardVolume(c),0);
-    const prevDay = days[idx+1];
-    const rest = prevDay ? daysBetween(prevDay, date) - 1 : null;
-    const dotsHtml = cards.map(c => `<span class="dot" style="background:${exerciseColorOf(c)}"></span>`).join(' ');
-    const body = cards.map(card => {
-      const color = exerciseColorOf(card);
-      const e1 = cardBestE1RM(card);
-      const inol = cardInol(card);
-      const ref = card.category==='main' ? refE1RM(card.lift, card.date) : null;
-      return `<div class="day-ex">
-        <div class="hcard-head">
-          <div class="hcard-title"><span class="dot" style="background:${color}"></span>${esc(exerciseLabelOf(card))}</div>
-          <div class="hcard-meta">
-            ${e1!=null ? `<span class="mono" style="color:${color};font-weight:700;">e1RM ${e1}kg</span>` : ''}
-            ${inol ? `<span class="mono" title="INOL：單次訓練刺激量">INOL ${inol.toFixed(2)}</span>` : ''}
-            <span class="mono">量 ${fmtNum(cardVolume(card))}kg</span>
-            <span class="card-trash" onclick="deleteCard('${card.id}')">刪除</span>
-          </div>
-        </div>
-        ${card.rows.map(r => rowHtml(card, r, ref)).join('')}
-      </div>`;
-    }).join('');
-    return `<div class="day-block" id="day-${date}">
-      <div class="day-head">
-        <div class="day-title">${date}（${wd(date)}）　${dotsHtml}${(b => b ? `　<span class="block-tag" style="background:${BLOCK_TYPES[b.type].color}">${esc(blockLabel(b))} W${blockWeek(b, date)}</span>` : '')(blockAt(date))}</div>
-        <div class="hcard-meta"><span>${cards.length} 個動作</span><span class="mono">總量 ${fmtNum(vol)}kg</span>${rest!=null ? `<span>距上次練 ${rest} 天休息</span>` : ''}</div>
-      </div>
-      ${body}
-    </div>`;
-  }).join('');
-  if (days.length > histLimit) {
-    html += `<button class="ghost" style="width:100%;padding:10px;" onclick="histLimit+=14;renderHistory();">顯示更早的 ${Math.min(14, days.length-histLimit)} 天（還有 ${days.length-histLimit} 天）</button>`;
-  }
-  el.innerHTML = html;
-}
-function renderHistoryByLift(el) {
-  const groups = {}, order = [];
-  Object.keys(MAIN_LIFTS).forEach(k => { groups[k] = { label: MAIN_LIFTS[k].label, color: MAIN_LIFTS[k].color, cards: [] }; order.push(k); });
-  entries.forEach(card => {
-    const key = exerciseKeyOf(card);
-    if (!groups[key]) { groups[key] = { label: exerciseLabelOf(card), color: exerciseColorOf(card), cards: [] }; order.push(key); }
-    groups[key].cards.push(card);
-  });
-  el.innerHTML = order.filter(key => groups[key].cards.length).map(key => {
-    const g = groups[key];
-    const cards = [...g.cards].sort((a,b)=>b.date.localeCompare(a.date));
-    const cardsHtml = cards.map(card => {
-      const e1 = cardBestE1RM(card);
-      const ref = card.category==='main' ? refE1RM(card.lift, card.date) : null;
-      return `
-        <div class="hist-card">
-          <div class="hist-card-date">${card.date}（${wd(card.date)}）</div>
-          <div class="hist-card-meta">
-            ${e1!=null ? `<span class="mono" style="color:${g.color};font-weight:700;">e1RM ${e1}kg</span>` : '<span></span>'}
-            <span class="card-trash" onclick="deleteCard('${card.id}')">刪除</span>
-          </div>
-          ${card.rows.map(r => rowHtml(card, r, ref)).join('')}
-          <div class="mono" style="color:#8B92A3; font-size:11.5px; margin-top:6px;">量 ${fmtNum(cardVolume(card))}kg</div>
-        </div>`;
-    }).join('');
-    return `
-      <div class="hist-group">
-        <div class="hist-group-title"><span class="dot" style="background:${g.color}"></span>${esc(g.label)}</div>
-        <div class="hist-scroll">${cardsHtml}</div>
-      </div>`;
-  }).join('');
-}
-
-// ===== 3. 科學化分析 =====
-function trainingWeeksSpan(today) {
-  if (!entries.length) return 1;
-  const first = entries.reduce((m,c)=>c.date<m?c.date:m, entries[0].date);
-  return Math.min(4, Math.max(1, (daysBetween(first, today)+1)/7));
-}
-function liftStats(k, today) {
-  const cards = liftCards(k);
-  const ref = refE1RM(k, today);
-  const best = allTimeBest(k);
-  const from56 = addDays(today, -56);
-  const tp = cards.filter(c=>c.date>from56 && c.date<=today)
-    .map(c=>({d:c.date, y:cardBestE1RM(c)})).filter(p=>p.y!=null)
-    .sort((a,b)=>a.d.localeCompare(b.d));
-  let slope = null;
-  if (tp.length >= 3) {
-    const s = linSlope(tp.map(p=>({x:daysBetween(tp[0].d,p.d), y:p.y})));
-    if (s != null) slope = s*7;
-  }
-  const from28 = addDays(today, -28);
-  const recent = cards.filter(c=>c.date>from28 && c.date<=today);
-  let hard = 0, inol = 0, nReps = 0, pctSum = 0;
-  const zones = ZONES.map(()=>0);
-  recent.forEach(c => {
-    const r = refE1RM(k, c.date);
-    c.rows.forEach(row => {
-      hard += hardSets(row, r);
-      inol += rowInol(row, r);
-      if (r) {
-        const n = row.reps*row.sets, p = row.weight/r*100;
-        nReps += n; pctSum += n*p; zones[zoneIdx(p)] += n;
-      }
-    });
-  });
-  const withE1 = cards.filter(c=>c.date<=today && cardBestE1RM(c)!=null).sort((a,b)=>b.date.localeCompare(a.date));
-  const lastE1 = withE1.length ? cardBestE1RM(withE1[0]) : null;
-  return { ref, best, slope, hard, inol, avgPct: nReps ? pctSum/nReps : null, zones, nReps,
-           sessions: recent.length, lastE1, lastDate: withE1.length ? withE1[0].date : null };
-}
-
-function renderAnalytics() {
-  const el = $('analytics');
-  const today = todayStr();
-  const lifts = Object.keys(MAIN_LIFTS);
-  if (!entries.length) { el.innerHTML = '<div class="empty">累積幾次有 RPE 的頂組後，這裡會出現分析。</div>'; return; }
-  const weeks = trainingWeeksSpan(today);
-  const S = {};
-  lifts.forEach(k => S[k] = liftStats(k, today));
-  const bw = profile.bodyweight;
-  let html = '';
-
-  // 能力總覽
-  html += `<div class="subhead">能力總覽</div><div class="table-scroll"><table class="voltable"><thead><tr>
-    <th>主項</th><th>目前 e1RM</th><th>歷史最佳</th><th>體重倍數</th><th>8 週趨勢</th><th>距上次 PR</th><th>每週次數</th><th>每週有效組</th><th>平均強度</th><th>每週 INOL</th>
-  </tr></thead><tbody>`;
-  lifts.forEach(k => {
-    const s = S[k];
-    const slopeTxt = s.slope==null ? '—' : `<span class="${s.slope>0.2?'ok':s.slope<-0.2?'bad':'warn'}">${s.slope>0?'+':''}${s.slope.toFixed(1)} kg/週</span>`;
-    const prDays = s.best ? daysBetween(s.best.date, today) : null;
-    const hw = s.hard/weeks;
-    const hardCls = !s.hard ? '' : hw < 6 ? 'low' : hw > 15 ? 'warn' : 'ok';
-    const inolW = s.inol/weeks;
-    const inolCls = !s.inol ? '' : inolW < 1.5 ? 'low' : inolW > 3.5 ? 'warn' : 'ok';
-    html += `<tr>
-      <td><span class="dot" style="background:${MAIN_LIFTS[k].color}"></span> ${MAIN_LIFTS[k].label}</td>
-      <td class="total">${s.ref ? round1(s.ref)+'kg' : '—'}</td>
-      <td>${s.best ? s.best.val+'kg' : '—'}</td>
-      <td>${s.ref && bw ? (s.ref/bw).toFixed(2)+'×' : '—'}</td>
-      <td>${slopeTxt}</td>
-      <td>${prDays!=null ? prDays+' 天' : '—'}</td>
-      <td>${(s.sessions/weeks).toFixed(1)}</td>
-      <td class="${hardCls}">${s.hard ? hw.toFixed(1) : '—'}</td>
-      <td>${s.avgPct ? Math.round(s.avgPct)+'%' : '—'}</td>
-      <td class="${inolCls}">${s.inol ? inolW.toFixed(2) : '—'}</td>
-    </tr>`;
-  });
-  const refsOk = lifts.every(k => S[k].ref);
-  const curTotal = refsOk ? lifts.reduce((a,k)=>a+S[k].ref,0) : null;
-  html += `</tbody></table></div>
-    <div class="hint">近 4 週平均。三項總和 ${curTotal ? round1(curTotal)+'kg' : '—'}${curTotal && bw ? '，DOTS '+round1(dots(curTotal,bw,profile.sex))+'，體重倍數 '+(curTotal/bw).toFixed(2)+'×' : ''}。</div>`;
-
-  // 疲勞警示
-  const warns = [];
-  lifts.forEach(k => {
-    const s = S[k];
-    if (s.lastE1 && s.ref && s.lastE1 < s.ref*0.95) warns.push(`${MAIN_LIFTS[k].label}最近一次（${s.lastDate}）e1RM ${s.lastE1}kg，比近 6 週最佳低 ${Math.round((1-s.lastE1/s.ref)*100)}%，可能疲勞累積或狀態不佳。`);
-    if (s.slope != null && s.slope < -0.5) warns.push(`${MAIN_LIFTS[k].label}近 8 週 e1RM 呈下降趨勢，可考慮安排減量週。`);
-    if (s.best && daysBetween(s.best.date, today) > 56 && s.sessions) warns.push(`${MAIN_LIFTS[k].label}已超過 8 週沒有新的 e1RM 紀錄，可檢視課表變化或強度安排。`);
-  });
-
-  // 負荷管理
-  const vm = dailyVolumeMap();
-  const sumRange = (from, to) => Object.entries(vm).filter(([d])=>d>from && d<=to).reduce((s,[,v])=>s+v,0);
-  const acute = sumRange(addDays(today,-7), today);
-  const chronic = sumRange(addDays(today,-28), today)/4;
-  const acwr = chronic ? acute/chronic : null;
-  const loads = [6,5,4,3,2,1,0].map(i => vm[addDays(today,-i)] || 0);
-  const mean = loads.reduce((a,b)=>a+b,0)/7;
-  const sd = Math.sqrt(loads.reduce((s,v)=>s+(v-mean)**2,0)/7);
-  const monotony = sd ? mean/sd : null;
-  const strain = monotony ? acute*monotony : null;
-  let acwrCls = '', acwrNote = '近 28 天的資料不足';
-  if (acwr != null) {
-    if (acwr < 0.8) { acwrCls='low'; acwrNote='負荷低於平常，減量或恢復期'; }
-    else if (acwr <= 1.3) { acwrCls='ok'; acwrNote='負荷穩定，在適應區間'; }
-    else if (acwr <= 1.5) { acwrCls='warn'; acwrNote='加量偏快，留意恢復'; }
-    else { acwrCls='bad'; acwrNote='短期負荷急升，建議降低'; }
-  }
-  const span = trainingWeeksSpan(today);
-  if (acwr != null && span < 4) acwrNote += '（紀錄未滿 4 週，僅供參考）';
-  html += `<div class="subhead">負荷管理</div><div class="kpi-grid">
-    <div class="kpi"><div class="kpi-l">ACWR 急慢性負荷比</div><div class="kpi-v ${acwrCls}">${acwr!=null ? acwr.toFixed(2) : '—'}</div><div class="kpi-n muted">${acwrNote}</div></div>
-    <div class="kpi"><div class="kpi-l">近 7 天總量</div><div class="kpi-v">${fmtNum(acute)}</div><div class="kpi-n muted">近 28 天週平均 ${fmtNum(chronic)} kg</div></div>
-    <div class="kpi"><div class="kpi-l">單調性</div><div class="kpi-v ${monotony!=null && monotony>2 ? 'warn' : ''}">${monotony!=null ? monotony.toFixed(2) : '—'}</div><div class="kpi-n muted">${monotony==null ? '近 7 天資料不足' : monotony>2 ? '每天負荷太接近，建議拉開輕重日' : '輕重日有區隔'}</div></div>
-    <div class="kpi"><div class="kpi-l">訓練張力</div><div class="kpi-v">${strain!=null ? fmtNum(strain) : '—'}</div><div class="kpi-n muted">週總量 × 單調性，跟自己過去比</div></div>
-  </div>`;
-  if (warns.length) html += `<div class="hint warn" style="margin-top:12px;">${warns.map(w=>'⚠ '+esc(w)).join('<br>')}</div>`;
-
-  // 強度區間
-  html += `<div class="subhead">強度區間分布（近 4 週，依次數計算）</div>`;
-  lifts.forEach(k => {
-    const s = S[k];
-    const bar = s.nReps ? ZONES.map((z,i) => s.zones[i] ? `<div style="width:${s.zones[i]/s.nReps*100}%;background:${z.color}" title="${z.label}：${s.zones[i]} 下（${Math.round(s.zones[i]/s.nReps*100)}%）"></div>` : '').join('') : '';
-    html += `<div class="zone-row"><span>${MAIN_LIFTS[k].label}</span><div class="zone-bar">${bar}</div></div>`;
-  });
-  html += `<div class="legend">${ZONES.map(z=>`<span><span class="sw" style="background:${z.color}"></span>${z.label}</span>`).join('')}</div>
-    `;
-
-  // 每週組數 / INOL
-  const monNow = getMonday(today);
-  const wks = [7,6,5,4,3,2,1,0].map(i => addDays(monNow, -7*i));
-  html += `<div class="subhead">每週變化（近 8 週）</div><div class="table-scroll"><table class="voltable"><thead><tr><th>主項</th>${wks.map(w=>`<th>${w.slice(5)}</th>`).join('')}</tr></thead><tbody>`;
-  lifts.forEach(k => {
-    html += `<tr><td><span class="dot" style="background:${MAIN_LIFTS[k].color}"></span> ${MAIN_LIFTS[k].label}</td>`;
-    wks.forEach(w => {
-      const end = addDays(w, 6);
-      const cs = liftCards(k).filter(c=>c.date>=w && c.date<=end);
-      if (!cs.length) { html += '<td class="muted">—</td>'; return; }
-      let hard = 0, inol = 0, bestE = null;
-      cs.forEach(c => {
-        const r = refE1RM(k, c.date);
-        c.rows.forEach(row => { hard += hardSets(row, r); inol += rowInol(row, r); });
-        const e = cardBestE1RM(c);
-        if (e != null && (bestE == null || e > bestE)) bestE = e;
-      });
-      html += `<td style="line-height:1.5;"><span class="mono" style="color:${MAIN_LIFTS[k].color};font-weight:700;">${bestE!=null ? bestE : '·'}</span><br><span class="muted">${hard} 組 · ${inol.toFixed(1)}</span></td>`;
-    });
-    html += '</tr>';
-  });
-  html += `</tbody></table></div><div class="hint">週最佳 e1RM ／ 有效組 · INOL</div>`;
-
-  // Rep PR
-  html += `<div class="subhead">次數紀錄（N 下以上能做到的最重重量）</div><div class="table-scroll"><table class="voltable"><thead><tr><th>主項</th>${[1,2,3,4,5,6,8,10].map(n=>`<th>${n}RM</th>`).join('')}</tr></thead><tbody>`;
-  lifts.forEach(k => {
-    html += `<tr><td><span class="dot" style="background:${MAIN_LIFTS[k].color}"></span> ${MAIN_LIFTS[k].label}</td>`;
-    [1,2,3,4,5,6,8,10].forEach(n => {
-      const b = repBest(k, n);
-      html += b ? `<td title="${b.date}">${b.weight}</td>` : '<td class="muted">—</td>';
-    });
-    html += '</tr>';
-  });
-  html += `</tbody></table></div>`;
-
-  // 力量比例
-  if (S.squat.ref && (S.bench.ref || S.deadlift.ref)) {
-    const ratio = (a, lo, hi) => {
-      const cls = a < lo ? 'low' : a > hi ? 'warn' : 'ok';
-      const txt = a < lo ? '偏低' : a > hi ? '偏高' : '常見範圍內';
-      return `<span class="${cls}">${Math.round(a*100)}%（${txt}）</span>`;
-    };
-    html += `<div class="subhead">力量比例（以深蹲為 100%）</div><div class="kpi-grid">`;
-    if (S.bench.ref) html += `<div class="kpi"><div class="kpi-l">臥推 / 深蹲</div><div class="kpi-v">${ratio(S.bench.ref/S.squat.ref, 0.60, 0.75)}</div><div class="kpi-n muted">常見約 60–75%</div></div>`;
-    if (S.deadlift.ref) html += `<div class="kpi"><div class="kpi-l">硬舉 / 深蹲</div><div class="kpi-v">${ratio(S.deadlift.ref/S.squat.ref, 1.05, 1.25)}</div><div class="kpi-n muted">常見約 105–125%</div></div>`;
-    html += `</div>`;
-  }
-
-  el.innerHTML = html;
-}
-
-// RPE 處方表
-function renderCalcLiftOptions() {
-  const sel = $('calcLift');
-  if (!sel.options.length) {
-    sel.innerHTML = Object.keys(MAIN_LIFTS).map(k=>`<option value="${k}">${MAIN_LIFTS[k].label}</option>`).join('');
-  }
-  if (!calcTouched) {
-    const ref = refE1RM(sel.value, todayStr());
-    $('calcE1').value = ref ? round1(ref) : '';
-  }
-}
-function renderCalc() {
-  const e1 = parseFloat($('calcE1').value);
-  const el = $('calcTable');
-  if (!e1) { el.innerHTML = '<div class="empty">這個主項還沒有 e1RM，先記錄一組有 RPE 的頂組，或手動輸入。</div>'; return; }
-  const rpes = [6,7,7.5,8,8.5,9,9.5,10];
-  const color = MAIN_LIFTS[$('calcLift').value].color;
+  const items = [];
+  LIFTS.forEach(k => [1,3,5].forEach(n => { const b = repBest(k,n); if (b) items.push(`<div class="row"><span>◆ ${MAIN_LIFTS[k].label}之證・${n}RM</span><span class="gold">${b.weight}kg</span></div>`); }));
+  const days = new Set(entries.map(c=>c.date)), from28 = addDays(todayStr(),-28);
+  const recent = [...days].filter(d=>d>from28).length;
   const blk = blockAt(todayStr());
-  const tr = blk ? BLOCK_TYPES[blk.type].rpe : null;
-  const inR = r => tr && r >= tr[0] && r <= tr[1];
-  let html = `<table class="voltable"><thead><tr><th>次數</th>${rpes.map(r=>`<th${inR(r) ? ` style="color:${BLOCK_TYPES[blk.type].color}"` : ''}>@${r}</th>`).join('')}</tr></thead><tbody>`;
-  for (let reps = 1; reps <= 10; reps++) {
-    html += `<tr><td>${reps} 下</td>${rpes.map(r => {
-      const w = roundTo(e1*pctFor(reps,r)/100, 2.5);
-      const strong = (r===8 && reps<=5) ? `style="color:${color};font-weight:700;"` : '';
-      return `<td class="mono" ${strong}${inR(r) && !strong ? ' style="background:#262b36"' : ''}>${w}</td>`;
-    }).join('')}</tr>`;
-  }
-  el.innerHTML = html + '</tbody></table>';
+  $('screen').innerHTML =
+    win(esc(heroName()), `<div class="hero-box">${sprite('hero', 84)}
+      <div style="flex:1">
+        <div class="row"><span>${jobOf(...s.cur)}</span><span>Lv <span class="gold big">${s.L}</span></span></div>
+        <div class="row" style="font-size:13px"><span class="dim">EXP</span>${bar(s.exp-lo, hi-lo, 'exp')}</div>
+        <div class="row" style="font-size:13px"><span class="dim">${fmtNum(s.exp)}</span><span class="dim">下一級還差 ${fmtNum(hi-s.exp)}</span></div>
+        <div class="row" style="font-size:14px"><span>戰力</span><span style="color:${rk?rk[1]:'#a8b0e0'}">${s.power!=null ? Math.round(s.power)+'・'+rk[0] : '— 未鑑定'}</span></div>
+      </div></div>`) +
+    win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${s.total ? round1(s.total)+'kg' : '—'}</span></div>`) +
+    (blk ? win('目前章節', `<div class="row"><span style="color:${BLOCK_TYPES[blk.type].color}">${esc(blockLabel(blk))}</span><span>第 ${blockWeek(blk,todayStr())} / ${blk.weeks} 週</span></div>
+      <div class="row" style="font-size:13px"><span class="dim">建議強度 ${BLOCK_TYPES[blk.type].pct.join('–')}%</span></div>`) : '') +
+    win('道具袋', items.length ? items.join('') : '<div class="dim">還沒有任何證物。打倒怪物就會掉落。</div>') +
+    win('冒險紀錄', `<div class="row"><span>出擊天數</span><span>${days.size} 天</span></div>
+      <div class="row"><span>近 28 天</span><span>${recent} 天</span></div>
+      <div class="row"><span>累積總傷害</span><span class="gold">${fmtNum(entries.reduce((a,c)=>a+cardVolume(c),0))}</span></div>`) +
+    win('系統', `<div class="cmds">
+      <button class="cmd" onclick="openProfile()">體重與性別<small>${profile.bodyweight ? profile.bodyweight+'kg' : '未設定'}・${profile.sex==='female'?'女':'男'}</small></button>
+      <button class="cmd" onclick="${user ? 'auth.signOut()' : 'login()'}">${user ? '登出' : 'Google 登入'}<small>${esc(syncText)}</small></button>
+    </div>`);
 }
-$('calcLift').addEventListener('change', () => { calcTouched = false; renderCalcLiftOptions(); renderCalc(); });
-$('calcE1').addEventListener('input', () => { calcTouched = true; renderCalc(); });
-
-// ===== 訓練週期 =====
-function sortedBlocks() { return [...blocks].sort((a,b)=>a.start.localeCompare(b.start)); }
-function blockEnd(b) { return addDays(b.start, b.weeks*7 - 1); }
-function blockAt(date) { return blocks.find(b => date >= b.start && date <= blockEnd(b)) || null; }
-function blockWeek(b, date) { return Math.floor(daysBetween(b.start, date)/7) + 1; }
-function blockLabel(b) { return b.name || BLOCK_TYPES[b.type].label; }
-function avgIntensity(from, to) {
-  let n = 0, sum = 0;
-  entries.forEach(c => {
-    if (c.category !== 'main' || c.date < from || c.date > to) return;
-    const ref = refE1RM(c.lift, c.date);
-    if (!ref) return;
-    c.rows.forEach(r => { const k = r.reps*r.sets; n += k; sum += k*r.weight/ref*100; });
-  });
-  return n ? sum/n : null;
+function openProfile() {
+  openModal(`<div class="win-t">鑑定所</div>
+    <div>體重 kg</div><input class="txt" id="mBw" type="number" step="0.1" inputmode="decimal" value="${profile.bodyweight??''}">
+    <div>性別</div><select class="txt" id="mSex"><option value="male"${profile.sex!=='female'?' selected':''}>男</option><option value="female"${profile.sex==='female'?' selected':''}>女</option></select>
+    <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="saveProfile()">儲存</button><button class="cmd" onclick="closeModal()">取消</button></div>`);
 }
-function openBlockForm(id) { blockEdit = { id: id || null }; renderBlocks(); }
-function closeBlockForm() { blockEdit = null; renderBlocks(); }
+function saveProfile() { const v = parseFloat($('mBw').value); profile.bodyweight = v>0?v:null; profile.sex = $('mSex').value; save(); closeModal(); SFX.ok(); render(); }
 
-function renderBlocks() {
+// ================= 戰鬥 =================
+const B = { active:false };
+function lastCard(cat, key, before) {
+  return entries.filter(c => c.category===cat && (cat==='main'?c.lift===key:c.exerciseName===key) && c.date<before)
+    .sort((a,b)=>b.date.localeCompare(a.date))[0] || null;
+}
+function renderBattleSelect() {
+  if (B.active) { renderBattle(); return; }
   const today = todayStr();
+  const opt = (cat, key, label, sk) => {
+    const p = lastCard(cat, key, today);
+    const t = entries.find(c => c.date===today && c.category===cat && (cat==='main'?c.lift===key:c.exerciseName===key));
+    const sub = t ? `今天已造成 ${fmtNum(cardVolume(t))} 傷害` : p ? `HP ${fmtNum(cardVolume(p))}・上次 ${p.date.slice(5)}` : '初次遭遇';
+    return `<button class="cmd" style="display:flex;gap:10px;align-items:center" data-cat="${cat}" data-key="${esc(key)}">${sprite(sk,40)}<span>${esc(label)}<small>${sub}</small></span></button>`;
+  };
+  const accs = {};
+  entries.filter(c=>c.category==='accessory').forEach(c => { if (!accs[c.exerciseName] || c.date>accs[c.exerciseName]) accs[c.exerciseName] = c.date; });
+  const accList = Object.keys(accs).sort((a,b)=>accs[b].localeCompare(accs[a]));
+  $('screen').innerHTML =
+    win('', `<div class="msg" style="min-height:0">怪物出現了！要挑戰哪一隻？</div>`) +
+    win('主線頭目', `<div id="pick">${LIFTS.map(k => opt('main', k, `${SPRITES[k].name}（${MAIN_LIFTS[k].label}）`, k)).join('')}</div>`) +
+    win('野外怪物', `<div id="pick2">${accList.map(n => opt('accessory', n, `${n}`, 'acc')).join('') || '<div class="dim">還沒遇過野外怪物。</div>'}
+      <button class="cmd" onclick="newAcc()">＋ 新的怪物<small>輸入輔助動作名稱</small></button></div>`);
+  $('screen').querySelectorAll('[data-cat]').forEach(b => b.onclick = () => startBattle(b.dataset.cat, b.dataset.key));
+}
+function newAcc() {
+  openModal(`<div class="win-t">新的怪物</div><div>輔助動作名稱</div><input class="txt" id="mAcc" placeholder="例如 划船" enterkeyhint="go">
+    <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="const v=$('mAcc').value.trim(); if(v){closeModal(); startBattle('accessory', v);}">挑戰</button><button class="cmd" onclick="closeModal()">取消</button></div>`);
+  setTimeout(()=>$('mAcc') && $('mAcc').focus(), 50);
+}
+function startBattle(cat, key) {
+  const today = todayStr(), prev = lastCard(cat, key, today);
+  const t = entries.find(c => c.date===today && c.category===cat && (cat==='main'?c.lift===key:c.exerciseName===key));
+  const lastRow = (t && t.rows.slice(-1)[0]) || (prev && prev.rows[0]);
+  Object.assign(B, { active:true, cat, key, sk: cat==='main'?key:'acc',
+    name: cat==='main' ? SPRITES[key].name : key+'之狼',
+    hpMax: prev ? Math.max(1, Math.round(cardVolume(prev))) : 2000,
+    dealt: t ? Math.round(cardVolume(t)) : 0,
+    topPrev: prev ? Math.max(...prev.rows.map(r=>r.weight)) : 0,
+    w: lastRow ? lastRow.weight : 20, rpe: lastRow && lastRow.rpe!=null ? lastRow.rpe : '',
+    reps: 0, dmg: 0, fatigue: 0, sub: null, rest: null, won: false });
+  B.won = B.dealt >= B.hpMax;
+  screen = 'battle'; SFX.win && beep([392,370,349,330],'square',.07);
+  render();
+  say([`${B.name} 出現了！`, prev ? `上次留下的血量是 ${fmtNum(B.hpMax)}。` : '這是第一次交手。']);
+}
+const hpLeft = () => Math.max(0, B.hpMax - B.dealt - B.dmg);
+function renderBattle() {
+  const fat = Math.min(100, B.fatigue);
+  $('screen').innerHTML =
+    win('', `<div class="row"><span>${esc(B.name)}</span><span class="dim">HP ${fmtNum(hpLeft())}/${fmtNum(B.hpMax)}</span></div>${bar(hpLeft(), B.hpMax)}`) +
+    `<div class="arena" id="arena">${sprite(B.sk, 150)}</div>` +
+    win(esc(heroName()), `<div class="row"><span>武器</span><span class="gold">${B.w} kg</span></div>
+      <div class="row"><span>氣力</span><span>${B.rpe!=='' ? 'RPE '+B.rpe+'・'+RPE_SKILLS.find(s=>String(s.v)===String(B.rpe)).n : '不計'}</span></div>
+      <div class="row"><span>本回合</span><span>${B.reps} 下・${fmtNum(B.dmg)} 傷害</span></div>
+      <div class="row" style="font-size:13px"><span class="dim">疲勞</span>${bar(100-fat, 100)}</div>`) +
+    win('', `<div class="msg" id="msg"></div>`) +
+    (B.rest ? restWin() : B.sub === 'weapon' ? weaponWin() : B.sub === 'skill' ? skillWin() : win('', `<div class="cmds">
+      <button class="cmd sel" id="atk">攻擊<small>每做一下點一次</small></button>
+      <button class="cmd" onclick="B.sub='weapon';SFX.cursor();renderBattle()">武器<small>調整重量</small></button>
+      <button class="cmd" onclick="B.sub='skill';SFX.cursor();renderBattle()">氣力<small>選擇 RPE</small></button>
+      <button class="cmd" ${B.reps?'':'disabled'} onclick="endTurn()">結束回合<small>記錄這組</small></button>
+      <button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
+      <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`));
+  const atk = $('atk'); if (atk) atk.addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
+  const sp = $('arena').querySelector('.sprite'); if (B.won && !B.dmg) sp.style.opacity = .25;
+  $('msg').textContent = B.lastMsg || '';
+}
+function weaponWin() {
+  return win('武器', `<div class="step"><button onclick="wAdj(-10)">-10</button><button onclick="wAdj(-2.5)">-2.5</button><b>${B.w}</b><button onclick="wAdj(2.5)">+2.5</button><button onclick="wAdj(10)">+10</button></div>
+    <div class="step"><button onclick="wAdj(-1)">-1</button><button onclick="wAdj(-5)">-5</button><button onclick="wAdj(5)">+5</button><button onclick="wAdj(1)">+1</button></div>
+    <div class="cmds"><button class="cmd sel" onclick="B.sub=null;SFX.ok();renderBattle()">裝備完成</button></div>`);
+}
+function wAdj(n) { B.w = Math.max(0, round1(B.w+n)); SFX.cursor(); buzz(false); renderBattle(); }
+function skillWin() {
+  return win('氣力', `<div class="cmds">${RPE_SKILLS.map(s => `<button class="cmd${String(s.v)===String(B.rpe)?' sel':''}" onclick="B.rpe=${s.v===''?"''":s.v};B.sub=null;SFX.ok();renderBattle()">${s.n}<small>${s.v===''?'不填 RPE':'RPE '+s.v}</small></button>`).join('')}</div>`);
+}
+let typeTimer = null;
+function say(lines) {
+  const text = lines.join('\n'); B.lastMsg = text;
+  const el = $('msg'); if (!el) return;
+  clearInterval(typeTimer); let i = 0; el.textContent = '';
+  typeTimer = setInterval(() => { el.textContent = text.slice(0, ++i); if (i % 2) beep([900],'square',.015); if (i >= text.length) clearInterval(typeTimer); }, 28);
+  el.onclick = () => { clearInterval(typeTimer); el.textContent = text; };
+}
+function attack() {
+  if (B.rest) return;
+  B.reps++;
+  const crit = B.topPrev > 0 && B.w > B.topPrev;
+  const dmg = Math.round(B.w);
+  const wasAlive = hpLeft() > 0;
+  B.dmg += dmg;
+  B.fatigue += (B.rpe !== '' ? B.rpe : 7) * 1.2;
+  renderBattle();
+  const ar = $('arena'), sp = ar.querySelector('.sprite');
+  sp.classList.add('hit'); setTimeout(() => sp.classList.remove('hit'), 80);
+  const d = document.createElement('div'); d.className = 'dmg' + (crit?' crit':''); d.textContent = dmg;
+  d.style.left = (35+Math.random()*25)+'%'; d.style.top = (30+Math.random()*20)+'%'; ar.appendChild(d); setTimeout(()=>d.remove(), 700);
+  if (crit) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); SFX.crit(); buzz(true); }
+  else { SFX.hit(); buzz(false); }
+  const lines = [`${heroName()} 的攻擊！第 ${B.reps} 下`, crit ? `會心一擊！${B.name} 受到 ${dmg} 點傷害！` : `${B.name} 受到 ${dmg} 點傷害。`];
+  if (wasAlive && hpLeft() <= 0) { lines.push(`${B.name} 搖搖欲墜……按「結束回合」給牠最後一擊！`); }
+  say(lines);
+}
+function snap() {
+  const s = rpgState();
+  const pr = {}; LIFTS.forEach(k => { const b = allTimeBest(k); pr[k] = { e: b?b.val:0, r: [1,3,5,8].map(n => { const x = repBest(k,n); return x?x.weight:0; }) }; });
+  return { L:s.L, exp:s.exp, pr };
+}
+function endTurn() {
+  if (!B.reps) return;
+  const before = snap(), date = todayStr();
+  let card = entries.find(c => c.date===date && c.category===B.cat && (B.cat==='main'?c.lift===B.key:c.exerciseName===B.key));
+  if (!card) { card = { id:uid(), date, category:B.cat, lift:B.cat==='main'?B.key:null, exerciseName:B.cat==='accessory'?B.key:null, rows:[] }; entries.push(card); }
+  card.rows.push({ id:uid(), weight:B.w, reps:B.reps, sets:1, rpe: B.rpe===''?null:parseFloat(B.rpe) });
+  save();
+  const after = snap();
+  const wasAlive = B.hpMax - B.dealt > 0;
+  B.dealt += B.dmg;
+  const lines = [`回合結束。${B.w}kg × ${B.reps}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`, `獲得 ${after.exp-before.exp} EXP！`];
+  if (B.cat === 'main') {
+    const a = after.pr[B.key], b = before.pr[B.key], nm = MAIN_LIFTS[B.key].label;
+    if (b.e && a.e > b.e) lines.push(`★ 獲得傳說道具「${nm}之魂 e1RM ${a.e}kg」！`);
+    [1,3,5,8].forEach((n,i) => { if (b.r[i] && a.r[i] > b.r[i]) lines.push(`◆ 獲得「${nm}之證・${n}RM ${a.r[i]}kg」！`); });
+  }
+  B.reps = 0; B.dmg = 0;
+  const killed = wasAlive && hpLeft() <= 0;
+  if (killed) { B.won = true; lines.unshift(`${B.name} 被打倒了！`); }
+  renderBattle(); say(lines);
+  if (killed) { const sp = $('arena').querySelector('.sprite'); sp.classList.add('dead'); SFX.win(); buzz(true); }
+  else SFX.ok();
+  if (after.L > before.L) setTimeout(() => lvUpFx(after.L), killed ? 1200 : 500);
+  setTimeout(startRest, killed ? 2600 : 1500);
+}
+function restWin() {
+  const r = B.rest, l = Math.max(0, r.left);
+  return win('旅館', `<div class="row"><span>休息中・體力恢復</span><span class="gold big">${Math.floor(l/60)}:${pad(l%60)}</span></div>
+    ${bar(r.max-l, r.max, 'mp')}
+    <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="restAdj(-30)">少休 30 秒</button><button class="cmd" onclick="restAdj(30)">多休 30 秒</button>
+      <button class="cmd sel" onclick="endRest()">出發！</button><button class="cmd" onclick="flee()">今天到此為止</button></div>`);
+}
+function startRest() {
+  if (!B.active) return;
+  const max = B.cat === 'main' ? 180 : 90;
+  B.rest = { left:max, max, f0:B.fatigue };
+  clearInterval(B.restTimer);
+  B.restTimer = setInterval(() => {
+    B.rest.left--; B.fatigue = Math.max(0, B.rest.f0 * B.rest.left / B.rest.max);
+    if (B.rest.left <= 0) { endRest(); SFX.rest(); buzz(true); say(['體力完全恢復了！', '準備好就繼續攻擊。']); return; }
+    if (screen === 'battle') { const keep = B.lastMsg; renderBattle(); $('msg').textContent = keep; }
+  }, 1000);
+  renderBattle(); $('msg').textContent = B.lastMsg;
+}
+function restAdj(n) { B.rest.left = Math.max(1, B.rest.left+n); B.rest.max = Math.max(B.rest.max, B.rest.left); SFX.cursor(); renderBattle(); $('msg').textContent = B.lastMsg; }
+function endRest() { clearInterval(B.restTimer); B.rest = null; B.fatigue = Math.min(B.fatigue, B.fatigue); renderBattle(); $('msg').textContent = B.lastMsg; }
+function scout() {
+  const p = lastCard(B.cat, B.key, todayStr());
+  say(p ? [`上次（${p.date.slice(5)}）的招式：`, p.rows.map(r => `${r.weight}×${r.reps}${r.sets>1?'×'+r.sets:''}${r.rpe!=null?'@'+r.rpe:''}`).join('、')] : ['沒有這隻怪物的情報。']);
+}
+function flee() {
+  if (B.reps && !confirm('這一組還沒結束回合，撤退會放棄。確定？')) return;
+  endBattle(); screen = 'battle'; render();
+}
+function endBattle() { clearInterval(B.restTimer); B.active = false; B.rest = null; B.lastMsg = ''; }
+// ================= 冒險日誌 =================
+let logLimit = 10;
+function renderLog() {
+  const days = [...new Set(entries.map(c=>c.date))].sort().reverse();
+  if (!days.length) { $('screen').innerHTML = win('冒險日誌', '<div class="dim">日誌是空白的。去「戰鬥」打倒第一隻怪物吧。</div>'); return; }
+  const first = days[days.length-1];
+  $('screen').innerHTML = days.slice(0, logLimit).map(d => {
+    const cs = entries.filter(c=>c.date===d).sort((a,b)=>(a.category==='main'?LIFTS.indexOf(a.lift):9)-(b.category==='main'?LIFTS.indexOf(b.lift):9));
+    const blk = blockAt(d);
+    const body = cs.map(c => {
+      const e1 = cardBestE1RM(c);
+      return `<div style="display:flex;gap:10px;margin:8px 0 2px">${sprite(monKey(c),30)}<div style="flex:1">
+        <div class="row"><span>${esc(c.category==='main'?SPRITES[c.lift].name:c.exerciseName)} <span class="dim">${esc(exLabel(c))}</span></span><span class="dim">${fmtNum(cardVolume(c))}</span></div>
+        ${c.rows.map(r => `<div class="log-row" data-c="${c.id}" data-r="${r.id}"><span>${r.weight}kg × ${r.reps}${r.sets>1?' × '+r.sets+'組':''}</span><span class="dim">${r.rpe!=null?'RPE '+r.rpe:''}</span></div>`).join('')}
+        ${e1!=null?`<div class="row" style="font-size:13px"><span class="dim">推測極限</span><span class="gold">${e1}kg</span></div>`:''}
+      </div></div>`;
+    }).join('');
+    return win(`第 ${daysBetween(first,d)+1} 天・${d.slice(5)}（${wd(d)}）`, (blk?`<div style="font-size:13px;color:${BLOCK_TYPES[blk.type].color}">${esc(blockLabel(blk))} 第 ${blockWeek(blk,d)} 週</div>`:'') + body, `id="day-${d}"`);
+  }).join('') + (days.length > logLimit ? win('', `<button class="cmd" onclick="logLimit+=10;renderLog()">翻閱更早的日誌<small>還有 ${days.length-logLimit} 天</small></button>`) : '');
+  $('screen').querySelectorAll('.log-row').forEach(el => el.onclick = () => editRow(el.dataset.c, el.dataset.r));
+}
+let ed = null;
+function editRow(cid, rid) {
+  const c = entries.find(x=>x.id===cid), r = c && c.rows.find(x=>x.id===rid); if (!r) return;
+  ed = { c, r, w:r.weight, reps:r.reps, sets:r.sets, rpe:r.rpe==null?'':r.rpe };
+  SFX.cursor(); drawEd();
+}
+function drawEd() {
+  openModal(`<div class="win-t">改寫日誌・${esc(exLabel(ed.c))}</div>
+    <div class="dim">重量</div><div class="step"><button onclick="edAdj('w',-2.5)">-2.5</button><b>${ed.w}</b><button onclick="edAdj('w',2.5)">+2.5</button></div>
+    <div class="dim">次數</div><div class="step"><button onclick="edAdj('reps',-1)">-1</button><b>${ed.reps}</b><button onclick="edAdj('reps',1)">+1</button></div>
+    <div class="dim">組數</div><div class="step"><button onclick="edAdj('sets',-1)">-1</button><b>${ed.sets}</b><button onclick="edAdj('sets',1)">+1</button></div>
+    <div class="dim">RPE</div><select class="txt" id="edRpe">${RPE_SKILLS.map(s=>`<option value="${s.v}"${String(s.v)===String(ed.rpe)?' selected':''}>${s.v===''?'不計':s.v+'・'+s.n}</option>`).join('')}</select>
+    <div class="cmds" style="margin-top:8px"><button class="cmd sel" onclick="edSave()">寫入</button><button class="cmd" onclick="closeModal()">取消</button>
+      <button class="cmd red" onclick="edDel()">刪除這組</button></div>`);
+}
+function edAdj(k, n) { ed.rpe = $('edRpe').value; ed[k] = Math.max(k==='w'?0:1, round1(ed[k]+n)); SFX.cursor(); drawEd(); }
+function edSave() { const v = $('edRpe').value; Object.assign(ed.r, { weight:ed.w, reps:ed.reps, sets:ed.sets, rpe: v===''?null:parseFloat(v) }); save(); closeModal(); SFX.ok(); render(); }
+function edDel() {
+  if (!confirm('確定刪除這組？')) return;
+  ed.c.rows = ed.c.rows.filter(x=>x!==ed.r); if (!ed.c.rows.length) entries = entries.filter(x=>x!==ed.c);
+  save(); closeModal(); render();
+}
+
+// ================= 世界地圖 =================
+function renderMap() {
+  const today = todayStr(), WEEKS = 18, start = addDays(getMonday(today), -7*(WEEKS-1));
+  const vm = {}; entries.forEach(c => vm[c.date] = (vm[c.date]||0) + cardVolume(c));
+  const max = Math.max(1, ...Object.values(vm));
+  let heat = '';
+  for (let w = 0; w < WEEKS; w++) {
+    heat += '<div class="heat-col">';
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(start, w*7+i);
+      if (d > today) { heat += '<div class="tile"></div>'; continue; }
+      const v = vm[d] || 0, blk = blockAt(d);
+      const bg = v ? `hsl(110,${45+40*v/max}%,${22+30*v/max}%)` : '#16306a';
+      heat += `<div class="tile" title="${d}${v?'・'+fmtNum(v):'・休息'}" style="background:${bg};${blk?`box-shadow:inset 0 -3px 0 ${BLOCK_TYPES[blk.type].color};`:''}${d===today?'outline:2px solid #f8d030;':''}" ${v?`data-d="${d}"`:''}></div>`;
+    }
+    heat += '</div>';
+  }
+  const from28 = addDays(today,-28), act = Object.keys(vm).filter(d=>d>from28).length;
   const cur = blockAt(today);
-  if (cur) {
-    const t = BLOCK_TYPES[cur.type];
-    const wk = blockWeek(cur, today);
-    const wkStart = addDays(cur.start, (wk-1)*7);
-    const avg = avgIntensity(wkStart, addDays(wkStart, 6));
-    const comp = avg == null ? '' : `　<span class="${avg < t.pct[0] ? 'low' : avg > t.pct[1] ? 'warn' : 'ok'}">本週 ${Math.round(avg)}%</span>`;
-    const prog = Math.min(100, (daysBetween(cur.start, today)+1)/(cur.weeks*7)*100);
-    $('blockNow').innerHTML = `<div class="block-now" style="--bc:${t.color}">
-      <div class="block-now-top"><span class="block-now-name">${esc(blockLabel(cur))}</span><span class="block-now-week">第 ${wk} / ${cur.weeks} 週</span></div>
-      <div class="block-target">強度 ${t.pct[0]}–${t.pct[1]}%　RPE ${t.rpe[0]}–${t.rpe[1]}${comp}</div>
-      <div class="progress"><div style="width:${prog}%"></div></div></div>`;
-  } else {
-    const next = sortedBlocks().find(b => b.start > today);
-    $('blockNow').innerHTML = `<div class="empty" style="padding:0 0 12px">${next
-      ? `下一段「${esc(blockLabel(next))}」${next.start.slice(5)} 開始`
-      : '還沒有安排週期'}</div>`;
-  }
-  $('blockTimeline').innerHTML = sortedBlocks().map(b => {
-    const t = BLOCK_TYPES[b.type];
-    const sel = blockEdit && blockEdit.id === b.id ? ' sel' : '';
-    const past = blockEnd(b) < today ? ' past' : '';
-    return `<div class="tl-seg${sel}${past}" role="button" tabindex="0" data-id="${b.id}" title="點一下編輯"
-      style="background:${t.color};width:${60 + b.weeks*16}px">${esc(blockLabel(b))}<small>${b.start.slice(5)}　${b.weeks} 週</small></div>`;
+  const chap = sortedBlocks().map((b,i) => {
+    const t = BLOCK_TYPES[b.type], st = blockEnd(b) < today ? '✓' : b.start > today ? '・' : '▶';
+    return `<button class="cmd${b===cur?' sel':''}" onclick="editBlock('${b.id}')"><span style="color:${t.color}">${st} 第 ${i+1} 章 ${esc(blockLabel(b))}</span><small>${b.start.slice(5)} 起・${b.weeks} 週・強度 ${t.pct.join('–')}%</small></button>`;
   }).join('');
-  renderBlockForm();
-  renderBlockReview();
+  $('screen').innerHTML =
+    win('世界地圖', `<div class="heat">${heat}</div>
+      <div class="row" style="font-size:13px"><span class="dim">綠地＝出擊・海＝休息・底線＝章節</span><span>近 28 天 ${act} 天</span></div>`) +
+    (cur ? win('目前章節', `<div class="row"><span style="color:${BLOCK_TYPES[cur.type].color}">${esc(blockLabel(cur))}</span><span>第 ${blockWeek(cur,today)} / ${cur.weeks} 週</span></div>
+      ${bar(daysBetween(cur.start,today)+1, cur.weeks*7, 'exp')}`) : '') +
+    win('章節目錄', `<div>${chap || '<div class="dim">還沒有規劃章節（訓練週期）。</div>'}</div>
+      <button class="cmd" onclick="editBlock()">＋ 新的章節</button>`);
+  $('screen').querySelectorAll('.tile[data-d]').forEach(t => t.onclick = () => { screen='log'; render(); const el = $('day-'+t.dataset.d); if (el) el.scrollIntoView({block:'center'}); });
 }
-$('blockTimeline').addEventListener('click', e => { const s = e.target.closest('.tl-seg'); if (s) openBlockForm(s.dataset.id); });
-$('blockTimeline').addEventListener('keydown', e => { const s = e.target.closest('.tl-seg'); if (s && e.key === 'Enter') openBlockForm(s.dataset.id); });
-
-function renderBlockForm() {
-  const el = $('blockFormWrap');
-  if (!blockEdit) { el.innerHTML = ''; return; }
-  const b = blockEdit.id ? blocks.find(x => x.id === blockEdit.id) : null;
-  const last = sortedBlocks().slice(-1)[0];
-  const defStart = b ? b.start : (last && blockEnd(last) >= todayStr() ? addDays(blockEnd(last), 1) : getMonday(todayStr()));
-  const type = b ? b.type : 'accumulation';
-  el.innerHTML = `<div class="block-form">
-    <div style="grid-column:span 2"><label class="field">類型</label>
-      <select id="bType">${Object.keys(BLOCK_TYPES).map(k => `<option value="${k}"${k===type?' selected':''}>${BLOCK_TYPES[k].label}</option>`).join('')}</select></div>
-    <div style="grid-column:span 2"><label class="field">名稱</label><input id="bName" type="text" value="${esc(b ? b.name || '' : '')}" placeholder="選填"></div>
-    <div style="grid-column:span 3"><label class="field">開始日</label><input id="bStart" type="date" value="${defStart}"></div>
-    <div><label class="field">週數</label><input id="bWeeks" type="number" inputmode="numeric" min="1" max="26" value="${b ? b.weeks : 4}"></div>
-    <div class="actions">
-      <button class="add" style="width:auto;padding:9px 18px;" onclick="saveBlock()">儲存</button>
-      <button class="ghost" onclick="closeBlockForm()">取消</button>
-      ${b ? `<button class="ghost" style="color:#B72E3D;margin-left:auto;" onclick="deleteBlock('${b.id}')">刪除</button>` : ''}
-      <span class="error" id="bErr" style="margin:0;"></span>
-    </div></div>`;
+function editBlock(id) {
+  const b = id ? blocks.find(x=>x.id===id) : null, last = sortedBlocks().slice(-1)[0];
+  const start = b ? b.start : (last && blockEnd(last) >= todayStr() ? addDays(blockEnd(last),1) : getMonday(todayStr()));
+  openModal(`<div class="win-t">${b?'修改章節':'新的章節'}</div>
+    <div>類型</div><select class="txt" id="bT">${Object.keys(BLOCK_TYPES).map(k=>`<option value="${k}"${b&&b.type===k?' selected':''}>${BLOCK_TYPES[k].label}</option>`).join('')}</select>
+    <div>名稱（選填）</div><input class="txt" id="bN" value="${esc(b?b.name||'':'')}">
+    <div>開始日</div><input class="txt" id="bS" type="date" value="${start}">
+    <div>週數</div><input class="txt" id="bW" type="number" min="1" max="26" inputmode="numeric" value="${b?b.weeks:4}">
+    <div class="red" id="bE"></div>
+    <div class="cmds" style="margin-top:8px"><button class="cmd sel" onclick="saveBlock('${id||''}')">儲存</button><button class="cmd" onclick="closeModal()">取消</button>
+      ${b?`<button class="cmd red" onclick="if(confirm('刪除這個章節？')){blocks=blocks.filter(x=>x.id!=='${b.id}');save();closeModal();render();}">刪除</button>`:''}</div>`);
 }
-function saveBlock() {
-  const type = $('bType').value;
-  const name = $('bName').value.trim();
-  const start = $('bStart').value;
-  const weeks = parseInt($('bWeeks').value);
-  const err = $('bErr');
-  if (!start) { err.textContent = '請選擇開始日'; return; }
-  if (!(weeks >= 1 && weeks <= 26)) { err.textContent = '週數請填 1–26'; return; }
-  const id = blockEdit && blockEdit.id;
-  const cand = { id: id || Date.now().toString(36)+Math.random().toString(36).slice(2,6), type, name, start, weeks };
-  const end = blockEnd(cand);
-  const clash = blocks.find(b => b.id !== id && start <= blockEnd(b) && end >= b.start);
-  if (clash) { err.textContent = `和「${blockLabel(clash)}」日期重疊`; return; }
-  if (id) Object.assign(blocks.find(b => b.id === id), cand); else blocks.push(cand);
-  blockEdit = null;
-  save();
-}
-function deleteBlock(id) {
-  if (!confirm('確定刪除這個週期？訓練紀錄不受影響。')) return;
-  blocks = blocks.filter(b => b.id !== id);
-  blockEdit = null;
-  save();
-}
-function renderBlockReview() {
-  const today = todayStr();
-  const list = sortedBlocks().filter(b => b.start <= today).reverse();
-  const el = $('blockReview');
-  if (!list.length) { el.innerHTML = ''; return; }
-  const lifts = Object.keys(MAIN_LIFTS);
-  let html = `<table class="voltable"><thead><tr><th>週期回顧</th><th>訓練天數</th><th>平均強度</th><th>每週有效組</th>${lifts.map(k=>`<th>${MAIN_LIFTS[k].label} Δ</th>`).join('')}</tr></thead><tbody>`;
-  list.forEach(b => {
-    const t = BLOCK_TYPES[b.type];
-    const end = blockEnd(b) < today ? blockEnd(b) : today;
-    const inBlock = entries.filter(c => c.date >= b.start && c.date <= end);
-    const days = new Set(inBlock.map(c => c.date)).size;
-    const avg = avgIntensity(b.start, end);
-    const weeksDone = Math.max(1, (daysBetween(b.start, end)+1)/7);
-    let hard = 0;
-    inBlock.filter(c => c.category === 'main').forEach(c => { const r = refE1RM(c.lift, c.date); c.rows.forEach(row => hard += hardSets(row, r)); });
-    const avgCls = avg == null ? '' : avg < t.pct[0] ? 'low' : avg > t.pct[1] ? 'warn' : 'ok';
-    html += `<tr><td><span class="block-tag" style="background:${t.color}">${esc(blockLabel(b))}</span> <span class="muted">${b.start.slice(5)}–${blockEnd(b).slice(5)}</span></td>
-      <td>${days}</td><td class="${avgCls}">${avg != null ? Math.round(avg)+'%' : '—'}</td><td>${hard ? (hard/weeksDone).toFixed(1) : '—'}</td>`;
-    lifts.forEach(k => {
-      const pre = refE1RM(k, addDays(b.start, -1));
-      let best = null;
-      inBlock.forEach(c => { if (c.category==='main' && c.lift===k) { const e = cardBestE1RM(c); if (e != null && (best == null || e > best)) best = e; } });
-      if (best == null) { html += '<td class="muted">—</td>'; return; }
-      if (pre == null) { html += `<td>${best}</td>`; return; }
-      const d = round1(best - pre);
-      html += `<td>${best} <span class="${d > 0 ? 'ok' : d < 0 ? 'bad' : 'muted'}">${d > 0 ? '+' : ''}${d}</span></td>`;
-    });
-    html += '</tr>';
-  });
-  el.innerHTML = html + '</tbody></table>';
+function saveBlock(id) {
+  const c = { id:id||uid(), type:$('bT').value, name:$('bN').value.trim(), start:$('bS').value, weeks:parseInt($('bW').value) };
+  if (!c.start || !(c.weeks>=1 && c.weeks<=26)) { $('bE').textContent = '請填開始日與 1–26 週'; return; }
+  const clash = blocks.find(b => b.id!==c.id && c.start<=blockEnd(b) && blockEnd(c)>=b.start);
+  if (clash) { $('bE').textContent = `和「${blockLabel(clash)}」重疊`; return; }
+  if (id) Object.assign(blocks.find(b=>b.id===id), c); else blocks.push(c);
+  save(); closeModal(); SFX.ok(); render();
 }
 
-// 個人資料
-function syncProfileInputs() {
-  $('pBw').value = profile.bodyweight ?? '';
-  $('pSex').value = profile.sex || 'male';
+// ================= 情報 =================
+let intelLift = 'squat';
+function renderIntel() {
+  const today = todayStr(), from28 = addDays(today,-28), from56 = addDays(today,-56);
+  const first = entries.length ? entries.reduce((m,c)=>c.date<m?c.date:m, entries[0].date) : today;
+  const weeks = Math.min(4, Math.max(1, (daysBetween(first,today)+1)/7));
+  const rows = LIFTS.map(k => {
+    const tp = liftCards(k).filter(c=>c.date>from56).map(c=>({d:c.date,y:cardBestE1RM(c)})).filter(p=>p.y!=null).sort((a,b)=>a.d.localeCompare(b.d));
+    const sl = tp.length>=3 ? linSlope(tp.map(p=>({x:daysBetween(tp[0].d,p.d),y:p.y}))) : null;
+    let hard = 0, inol = 0;
+    liftCards(k).filter(c=>c.date>from28).forEach(c => { const r = refE1RM(k,c.date); c.rows.forEach(x => { hard += hardSets(x,r); inol += rowInol(x,r); }); });
+    const s = sl==null ? null : sl*7;
+    return `<tr><td>${sprite(k,22)}</td><td class="${s==null?'dim':s>0.2?'green':s<-0.2?'red':'gold'}">${s==null?'—':(s>0?'+':'')+s.toFixed(1)}</td>
+      <td>${hard?(hard/weeks).toFixed(1):'—'}</td><td>${inol?(inol/weeks).toFixed(2):'—'}</td></tr>`;
+  }).join('');
+  const vm = {}; entries.forEach(c => vm[c.date] = (vm[c.date]||0)+cardVolume(c));
+  const sum = (a,b) => Object.entries(vm).filter(([d])=>d>a&&d<=b).reduce((s,[,v])=>s+v,0);
+  const acute = sum(addDays(today,-7),today), chronic = sum(from28,today)/4, acwr = chronic ? acute/chronic : null;
+  const [fc, fl] = acwr==null ? ['dim','情報不足'] : acwr<0.8 ? ['blue','精力充沛・可加量'] : acwr<=1.3 ? ['green','狀態良好'] : acwr<=1.5 ? ['gold','略感疲憊・留意恢復'] : ['red','過勞！建議休息'];
+  const e1 = refE1RM(intelLift);
+  const book = e1 ? `<div class="scroll"><table class="tbl"><tr><th>次數</th>${[7,8,9].map(r=>`<th>@${r}</th>`).join('')}</tr>
+    ${[1,2,3,4,5,6,8].map(n=>`<tr><td>${n} 下</td>${[7,8,9].map(r=>`<td class="${r===8?'gold':''}">${roundTo(e1*pctFor(n,r)/100,2.5)}</td>`).join('')}</tr>`).join('')}</table></div>`
+    : '<div class="dim">還沒有這招的情報。記錄一組有 RPE 的頂組後解鎖。</div>';
+  $('screen').innerHTML =
+    win('成長情報', `<table class="tbl"><tr><th></th><th>成長/週</th><th>每週修煉</th><th>週刺激</th></tr>${rows}</table>
+      <div class="dim" style="font-size:12px;margin-top:6px">成長＝近 8 週 e1RM 斜率 kg・修煉＝有效組 6–15 為佳・刺激＝INOL 2–3 為佳</div>`) +
+    win('疲勞鑑定', `<div class="row"><span>急慢性負荷比</span><span class="${fc} big" style="font-size:22px">${acwr!=null?acwr.toFixed(2):'—'}</span></div>
+      <div class="row"><span class="${fc}">${fl}</span><span class="dim">7 天 ${fmtNum(acute)}</span></div>`) +
+    win('技能書', `<div class="cmds" style="grid-template-columns:repeat(3,1fr);margin-bottom:6px">${LIFTS.map(k=>`<button class="cmd${intelLift===k?' sel':''}" onclick="intelLift='${k}';SFX.cursor();renderIntel()">${MAIN_LIFTS[k].label}</button>`).join('')}</div>
+      <div class="row"><span>推測極限</span><span class="gold">${e1?round1(e1)+'kg':'—'}</span></div>${book}`);
 }
-$('pBw').addEventListener('change', () => { const v = parseFloat($('pBw').value); profile.bodyweight = v > 0 ? v : null; save(); });
-$('pSex').addEventListener('change', () => { profile.sex = $('pSex').value; save(); });
 
-function renderAll() {
-  renderPRs();
-  renderE1rmChart();
-  renderAccessoryDatalist();
-  renderTrendOptions();
-  renderAccChart();
-  renderVolTable();
-  renderBlocks();
-  renderWeek();
-  renderHeatmap();
-  renderHistory();
-  renderAnalytics();
-  renderCalcLiftOptions();
-  renderCalc();
-  renderLastPanel();
-  updatePreview();
-}
-function refreshUI() {
-  syncProfileInputs();
-  renderCategoryPills(); renderMainLiftPills(); renderVolPills(); renderHistPills();
-  renderAll();
-}
-
-renderAuthBar(null);
-setSyncStatus('連線中...', '#8B92A3');
-loadLocalFallback();
-refreshUI();
+// ================= 啟動 =================
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('modal').hidden) closeModal(); });
+loadLocal();
+render();
 </script>
-<script src="rpg.js"></script>
 </body>
 </html>
