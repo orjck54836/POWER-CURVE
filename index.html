@@ -237,12 +237,50 @@ function rpgState() {
   const power = total && profile.bodyweight ? dots(total, profile.bodyweight, profile.sex) : null;
   return { exp, L, cur, total, power };
 }
-function jobOf(sq, bp, dl) {
-  if (!sq || !bp || !dl) return '見習冒險者';
-  if (dl/sq > 1.25) return '破城者';
-  if (bp/sq > 0.75) return '重槍騎士';
-  if (dl/sq < 1.05) return '鐵壁守衛';
-  return '全能戰士';
+// ---- 依三項比例的職業鑑定 ----
+// 一般力量選手的三項占比（深蹲／臥推／硬舉）
+const TYPICAL_SHARE = { male:[0.36,0.24,0.40], female:[0.37,0.21,0.42] };
+const JOBS = {
+  balanced: { name:'全能戰士', type:'均衡型', desc:'三項比例接近一般力量選手，沒有明顯短板。', adv:'維持均衡，按週期同時推進三項；想突破就挑最接近下一稱號的一項加重。' },
+  squat:    { name:'鐵壁守衛', type:'深蹲特化', desc:'深蹲明顯突出，下肢與軀幹剛性是你的武器。', adv:'臥推和硬舉相對落後，可以把硬舉頻率提到每週 2 次，臥推加入暫停臥推。' },
+  bench:    { name:'重槍騎士', type:'臥推特化', desc:'臥推明顯突出，上半身推力是你的武器。', adv:'下肢是成長空間最大的地方，深蹲與硬舉加一點訓練量，總和會進步最快。' },
+  deadlift: { name:'破城者', type:'硬舉特化', desc:'硬舉明顯突出，後鏈與握力是你的武器。', adv:'深蹲和臥推相對落後，深蹲可加入暫停深蹲或前蹲，臥推提高頻率。' },
+  weakBench:    { name:'大地巨人', type:'下肢型', desc:'深蹲和硬舉都強，臥推是弱點。', adv:'臥推頻率提高到每週 3 次，加入窄握臥推、啞鈴臥推補強三頭與胸。' },
+  weakSquat:    { name:'狂戰士', type:'拉推型', desc:'臥推和硬舉都強，深蹲是弱點。', adv:'加入暫停深蹲、前蹲，強化股四頭與軀幹剛性，並檢查深蹲技術。' },
+  weakDeadlift: { name:'聖堂騎士', type:'蹲推型', desc:'深蹲和臥推都強，硬舉是弱點。', adv:'加入羅馬尼亞硬舉、赤字硬舉，強化後鏈與起槓速度，也檢查握力。' },
+};
+function evaluate(cur, sex) {
+  const [sq, bp, dl] = cur;
+  if (!sq || !bp || !dl) return null;
+  const tot = sq + bp + dl, typ = TYPICAL_SHARE[sex==='female'?'female':'male'];
+  const rel = [sq, bp, dl].map((v,i) => v/tot/typ[i]); // 1 = 一般比例
+  const TH = 0.05;
+  const strong = rel.map(r => r > 1+TH), weak = rel.map(r => r < 1-TH);
+  const ns = strong.filter(Boolean).length, nw = weak.filter(Boolean).length;
+  const weakKey = ['weakSquat','weakBench','weakDeadlift'], strongKey = ['squat','bench','deadlift'];
+  let job;
+  if (ns >= 2 || (nw === 1 && ns === 0)) job = JOBS[weakKey[rel.indexOf(Math.min(...rel))]];
+  else if (ns === 1) job = JOBS[strongKey[strong.indexOf(true)]];
+  else job = JOBS.balanced;
+  const WEAK_ADV = ['深蹲：加入暫停深蹲、前蹲，強化股四頭與軀幹剛性。','臥推：頻率提高到每週 3 次，加入窄握臥推、啞鈴臥推補強三頭與胸。','硬舉：加入羅馬尼亞硬舉、赤字硬舉，強化後鏈、起槓速度與握力。'];
+  const weakList = [0,1,2].filter(i => weak[i]);
+  const advice = weakList.length ? weakList.map(i => WEAK_ADV[i]).join('<br>') : job.adv;
+  const grade = rel.map(r => r > 1+TH ? ['強項','green'] : r < 1-TH ? ['弱項','red'] : ['標準','dim']);
+  return { job, rel, grade, advice, ratios: { bpSq: bp/sq, dlSq: dl/sq } };
+}
+function jobOf(sq, bp, dl) { const ev = evaluate([sq,bp,dl], profile.sex); return ev ? ev.job.name : '見習冒險者'; }
+function radarSvg(rel, size) {
+  const c = 60, R = 46, ang = [-90, 30, 150].map(a => a*Math.PI/180);
+  const pt = (r, i) => `${(c + r*Math.cos(ang[i])).toFixed(1)},${(c + r*Math.sin(ang[i])).toFixed(1)}`;
+  const scale = v => R * Math.max(0.15, Math.min(1, 0.6 + (v-1)*2));
+  const ring = k => [0,1,2].map(i => pt(R*k, i)).join(' ');
+  const labels = ['深蹲','臥推','硬舉'], pos = [[c, 8], [c+R+4, c+R*0.5+12], [c-R-4, c+R*0.5+12]];
+  return `<svg viewBox="0 0 120 124" width="${size}" style="display:block;margin:0 auto">
+    <polygon points="${ring(1)}" fill="none" stroke="#3a4a9a"/><polygon points="${ring(0.6)}" fill="none" stroke="#a8b0e0" stroke-dasharray="3 2"/>
+    ${[0,1,2].map(i=>`<line x1="${c}" y1="${c}" x2="${pt(R,i).split(',')[0]}" y2="${pt(R,i).split(',')[1]}" stroke="#3a4a9a"/>`).join('')}
+    <polygon points="${rel.map((v,i)=>pt(scale(v),i)).join(' ')}" fill="rgba(248,208,48,.35)" stroke="#f8d030" stroke-width="2"/>
+    ${labels.map((l,i)=>`<text x="${pos[i][0]}" y="${pos[i][1]}" fill="#f4f4f4" font-size="10" text-anchor="${i===0?'middle':i===1?'end':'start'}">${l}</text>`).join('')}
+  </svg>`;
 }
 function rankOf(p) {
   return p >= 530 ? ['傳說','#f89838'] : p >= 470 ? ['秘銀','#78d8f8'] : p >= 400 ? ['黃金','#f8d030'] :
@@ -422,6 +460,7 @@ function renderStatus() {
     win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${sumNow ? round1(sumNow)+'kg' : '—'}</span></div>
       <button class="cmd" onclick="openTitles()">稱號一覽<small>查看所有稱號與外觀</small></button>
       ${tt.next ? `<div class="row" style="font-size:13px"><span class="dim">下一稱號「${tt.nextName}」</span><span class="dim">還差 ${round1(tt.next-sumNow)}kg</span></div>${bar(sumNow-(tt.next-50), 50, 'exp')}` : '<div class="gold">已達最高稱號</div>'}`) +
+    evalWin(s.cur) +
     (blk ? win('目前章節', `<div class="row"><span style="color:${BLOCK_TYPES[blk.type].color}">${esc(blockLabel(blk))}</span><span>第 ${blockWeek(blk,todayStr())} / ${blk.weeks} 週</span></div>
       <div class="row" style="font-size:13px"><span class="dim">建議強度 ${BLOCK_TYPES[blk.type].pct.join('–')}%</span></div>`) : '') +
     win('道具袋', items.length ? items.join('') : '<div class="dim">還沒有任何證物。打倒怪物就會掉落。</div>') +
@@ -625,6 +664,20 @@ function openTitles() {
     <div class="win-t" style="position:static;display:inline-block;margin:14px 0 8px">外觀進化（${sex==='female'?'女':'男'}）</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${gal}</div>
     <div class="cmds" style="margin-top:10px"><button class="cmd sel" onclick="closeModal()">關閉</button></div>`);
+}
+
+function evalWin(cur) {
+  const ev = evaluate(cur, profile.sex);
+  if (!ev) return win('職業鑑定', '<div class="dim">三項都記錄過有 RPE 的頂組後，就能鑑定你的職業與強弱項。</div>');
+  const names = ['深蹲','臥推','硬舉'];
+  return win('職業鑑定', `<div style="display:grid;grid-template-columns:130px 1fr;gap:10px;align-items:center">
+      ${radarSvg(ev.rel, 130)}
+      <div><div class="gold" style="font-size:22px">${ev.job.name}</div><div class="dim" style="font-size:13px">${ev.job.type}</div>
+        ${names.map((n,i)=>`<div class="row" style="font-size:14px"><span>${n}</span><span class="${ev.grade[i][1]}">${ev.grade[i][0]} ${Math.round(ev.rel[i]*100)}%</span></div>`).join('')}</div></div>
+    <div style="font-size:14px;line-height:1.6;margin-top:6px">${ev.job.desc}</div>
+    <div class="row" style="font-size:13px;margin-top:4px"><span class="dim">臥推／深蹲 ${Math.round(ev.ratios.bpSq*100)}%</span><span class="dim">硬舉／深蹲 ${Math.round(ev.ratios.dlSq*100)}%</span></div>
+    <div style="font-size:14px;line-height:1.6;margin-top:6px"><span class="gold">修煉建議：</span><br>${ev.advice}</div>
+    <div class="dim" style="font-size:11px;margin-top:6px">100%＝一般${profile.sex==='female'?'女性':'男性'}選手的比例，虛線三角形為基準。±5% 以外判定為強項或弱項。</div>`);
 }
 // ================= 冒險日誌 =================
 let logLimit = 10;
@@ -865,7 +918,7 @@ function renderBoard() {
       ${rows.length ? rows.map((r,i) => `<div class="board-row${r.uid===user.uid?' me':''}">
         <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36)}
         <div><div>${esc(r.name||'無名勇者')}</div>
-          <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
+          <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」${(()=>{const ev=evaluate([r.squat,r.bench,r.deadlift], r.sex);return ev?`<span style="color:#78d8f8">${ev.job.name}</span>`:''})()}<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
         <span class="gold" style="font-size:18px">${boardSort==='total' ? r.total : r.dots}</span></div>`).join('')
         : '<div class="dim">榜上還沒有英雄。成為第一個吧。</div>'}
       <button class="cmd" onclick="boardRows=null;renderBoard()">重新整理</button>`);
