@@ -54,7 +54,8 @@ body { padding:calc(10px + env(safe-area-inset-top)) 10px calc(120px + env(safe-
 @keyframes shake { 25% { transform:translate(-5px,2px); } 75% { transform:translate(5px,-2px); } }
 .modal { position:fixed; inset:0; background:rgba(5,6,15,.8); z-index:40; display:flex; align-items:center; justify-content:center; padding:16px; }
 .modal[hidden] { display:none; }
-.modal .win { width:100%; max-width:420px; max-height:84vh; overflow-y:auto; }
+.modal .win { width:100%; max-width:420px; max-height:84vh; overflow-y:auto; padding-top:30px; }
+.modal .win > .win-t:first-child { top:6px; }
 .step { display:flex; align-items:center; justify-content:center; gap:6px; margin:10px 0; }
 .step button { background:var(--w2); color:var(--line); border:2px solid var(--line); border-radius:4px; font:inherit; font-size:15px; min-width:46px; height:40px; cursor:pointer; }
 .step b { font-size:26px; min-width:96px; text-align:center; color:var(--gold); font-weight:400; }
@@ -374,6 +375,7 @@ function renderStatus() {
         <div class="row" style="font-size:14px"><span>戰力</span><span style="color:${rk?rk[1]:'#a8b0e0'}">${s.power!=null ? Math.round(s.power)+'・'+rk[0] : '— 未鑑定'}</span></div>
       </div></div>`) +
     win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${sumNow ? round1(sumNow)+'kg' : '—'}</span></div>
+      <button class="cmd" onclick="openTitles()">稱號一覽<small>查看所有稱號與外觀</small></button>
       ${tt.next ? `<div class="row" style="font-size:13px"><span class="dim">下一稱號「${tt.nextName}」</span><span class="dim">還差 ${round1(tt.next-sumNow)}kg</span></div>${bar(sumNow-(tt.next-50), 50, 'exp')}` : '<div class="gold">已達最高稱號</div>'}`) +
     (blk ? win('目前章節', `<div class="row"><span style="color:${BLOCK_TYPES[blk.type].color}">${esc(blockLabel(blk))}</span><span>第 ${blockWeek(blk,todayStr())} / ${blk.weeks} 週</span></div>
       <div class="row" style="font-size:13px"><span class="dim">建議強度 ${BLOCK_TYPES[blk.type].pct.join('–')}%</span></div>`) : '') +
@@ -453,11 +455,11 @@ function renderBattle() {
       <div class="param"><span>組數</span><div class="step"><button data-s="-1">-1</button><b>${B.sets}</b><button data-s="1">+1</button></div></div>
       <div class="param"><span>RPE</span><div class="chips">${RPE_SKILLS.map(s=>`<button data-rpe="${s.v}" class="${String(s.v)===String(B.rpe)?'on':''}">${s.v===''?'—':s.v}</button>`).join('')}</div></div>
       <div class="row" style="font-size:13px"><span class="dim">${B.rpe!==''?'招式：'+RPE_SKILLS.find(s=>String(s.v)===String(B.rpe)).n:'招式：不計 RPE'}</span><span class="dim">${B.sets>1?'結束時以 '+B.sets+' 組計算':''}</span></div>`) +
-    (rest ? restWin() : `<button class="atk" id="atk">ATTACK<small>${B.reps ? `第 ${B.reps} 下・本回合 ${fmtNum(B.dmg*B.sets)} 傷害` : '每做完一下點一次'}</small></button>`) +
+    (rest ? restWin() : `<button class="atk" id="atk">ATTACK<small>${B.reps ? `第 ${B.reps} 下・這組 ${fmtNum(B.dmg*B.sets)} 傷害` : '每做完一下點一次'}</small></button>`) +
     win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sum, 40)}<div style="flex:1">
       <div class="row" style="font-size:13px"><span class="dim">疲勞</span>${bar(100-fat, 100)}</div></div></div>
       <div class="cmds" style="margin-top:6px">
-      <button class="cmd${B.reps?' sel':''}" ${B.reps&&!rest?'':'disabled'} onclick="endTurn()">結束回合<small>${B.reps?`${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}`:'記錄這組'}</small></button>
+      <button class="cmd${B.reps?' sel':''}" ${B.reps&&!rest?'':'disabled'} onclick="endTurn()">結束這一組<small>${B.reps?`${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}`:'記錄這組'}</small></button>
       <button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
       <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`);
   const atk = $('atk'); if (atk) atk.addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
@@ -492,7 +494,7 @@ function attack() {
   if (crit) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); SFX.crit(); buzz(true); }
   else { SFX.hit(); buzz(false); }
   const lines = [`${heroName()} 的攻擊！第 ${B.reps} 下`, crit ? `會心一擊！${B.name} 受到 ${dmg} 點傷害！` : `${B.name} 受到 ${dmg} 點傷害。`];
-  if (wasAlive && hpLeft() <= 0) { lines.push(`${B.name} 搖搖欲墜……按「結束回合」給牠最後一擊！`); }
+  if (wasAlive && hpLeft() <= 0) { lines.push(`${B.name} 搖搖欲墜……按「結束這一組」給牠最後一擊！`); }
   say(lines);
 }
 function snap() {
@@ -510,7 +512,7 @@ function endTurn() {
   const after = snap();
   const wasAlive = B.hpMax - B.dealt > 0;
   B.dmg *= B.sets; B.dealt += B.dmg; B.dmg = 0;
-  const lines = [`回合結束。${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`, `獲得 ${after.exp-before.exp} EXP！`];
+  const lines = [`這一組結束。${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`, `獲得 ${after.exp-before.exp} EXP！`];
   if (B.cat === 'main') {
     const a = after.pr[B.key], b = before.pr[B.key], nm = MAIN_LIFTS[B.key].label;
     if (b.e && a.e > b.e) lines.push(`★ 獲得傳說道具「${nm}之魂 e1RM ${a.e}kg」！`);
@@ -551,10 +553,32 @@ function scout() {
   say(p ? [`上次（${p.date.slice(5)}）的招式：`, p.rows.map(r => `${r.weight}×${r.reps}${r.sets>1?'×'+r.sets:''}${r.rpe!=null?'@'+r.rpe:''}`).join('、')] : ['沒有這隻怪物的情報。']);
 }
 function flee() {
-  if (B.reps && !confirm('這一組還沒結束回合，撤退會放棄。確定？')) return;
+  if (B.reps && !confirm('這一組還沒按「結束這一組」，撤退會放棄。確定？')) return;
   endBattle(); screen = 'battle'; render();
 }
 function endBattle() { clearInterval(B.restTimer); B.active = false; B.rest = null; B.lastMsg = ''; }
+
+function openTitles() {
+  const sumNow = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), cur = Math.min(TITLES.length-1, Math.floor(sumNow/50));
+  const sex = profile.sex==='female'?'female':'male', tier = tierOf(sumNow, sex);
+  const ladder = TITLES.map((n,i) => i).reverse().map(i => {
+    const got = i <= cur, me = i === cur;
+    const fill = me ? Math.min(100, (sumNow - i*50)/50*100) : got ? 100 : 0;
+    return `<div style="display:grid;grid-template-columns:62px 1fr 88px;gap:8px;align-items:center;margin:3px 0;${me?'color:var(--gold)':got?'':'color:#6a72a8'}">
+      <span style="font-size:13px">${i*50}kg</span>
+      <div class="bar exp" style="height:12px"><div style="width:${fill}%"></div></div>
+      <span>${me?'▶ ':''}${got||me?TITLES[i]:'？？？'}</span></div>`;
+  }).join('');
+  const gal = TIER_NAME.map((n,i) => `<div style="text-align:center;font-size:12px;${i<=tier?'':'opacity:.35'}">
+      ${heroSprite(sex, TIER_CUT[sex][i], 46)}<div>${n}</div><div class="dim">${TIER_CUT[sex][i]}kg</div></div>`).join('');
+  openModal(`<div class="win-t">稱號一覽</div>
+    <div class="row"><span>目前總和</span><span class="gold">${round1(sumNow)}kg・「${TITLES[cur]}」</span></div>
+    <div class="dim" style="font-size:12px;margin-bottom:6px">每 50kg 晉升一個稱號，未解鎖的顯示為？？？</div>
+    ${ladder}
+    <div class="win-t" style="position:static;display:inline-block;margin:14px 0 8px">外觀進化（${sex==='female'?'女':'男'}）</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">${gal}</div>
+    <div class="cmds" style="margin-top:10px"><button class="cmd sel" onclick="closeModal()">關閉</button></div>`);
+}
 // ================= 冒險日誌 =================
 let logLimit = 10;
 function renderLog() {
@@ -599,37 +623,52 @@ function edDel() {
   save(); closeModal(); render();
 }
 
-// ================= 世界地圖 =================
+// ================= 冒險地圖（月曆） =================
+let mapMonth = 0;
 function renderMap() {
-  const today = todayStr(), WEEKS = 18, start = addDays(getMonday(today), -7*(WEEKS-1));
-  const vm = {}; entries.forEach(c => vm[c.date] = (vm[c.date]||0) + cardVolume(c));
-  const max = Math.max(1, ...Object.values(vm));
-  let heat = '';
-  for (let w = 0; w < WEEKS; w++) {
-    heat += '<div class="heat-col">';
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(start, w*7+i);
-      if (d > today) { heat += '<div class="tile"></div>'; continue; }
-      const v = vm[d] || 0, blk = blockAt(d);
-      const bg = v ? `hsl(110,${45+40*v/max}%,${22+30*v/max}%)` : '#16306a';
-      heat += `<div class="tile" title="${d}${v?'・'+fmtNum(v):'・休息'}" style="background:${bg};${blk?`box-shadow:inset 0 -3px 0 ${BLOCK_TYPES[blk.type].color};`:''}${d===today?'outline:2px solid #f8d030;':''}" ${v?`data-d="${d}"`:''}></div>`;
-    }
-    heat += '</div>';
+  const today = todayStr(), base = parseDate(today);
+  const first = new Date(base.getFullYear(), base.getMonth()+mapMonth, 1);
+  const ym = first.getFullYear()+'-'+pad(first.getMonth()+1);
+  const startD = fmtDate(first), lastDay = new Date(first.getFullYear(), first.getMonth()+1, 0).getDate();
+  const lead = (first.getDay()+6)%7; // 週一開頭
+  let cells = '', fought = 0, vol = 0;
+  for (let i = 0; i < lead; i++) cells += '<div></div>';
+  for (let d = 1; d <= lastDay; d++) {
+    const ds = ym+'-'+pad(d), cs = entries.filter(c=>c.date===ds), blk = blockAt(ds);
+    if (cs.length) { fought++; vol += cs.reduce((a,c)=>a+cardVolume(c),0); }
+    const mons = [...new Set(cs.map(monKey))].slice(0,4).map(k=>sprite(k,16)).join('');
+    const future = ds > today;
+    cells += `<div ${cs.length?`data-d="${ds}"`:''} style="min-height:58px;border-radius:4px;padding:3px;cursor:${cs.length?'pointer':'default'};
+      background:${cs.length?'#1f4a2a':future?'transparent':'#101a4a'};border:2px solid ${ds===today?'#f8d030':cs.length?'#58d858':'#2a3880'};
+      ${blk?`border-top:5px solid ${BLOCK_TYPES[blk.type].color};`:''}${future?'opacity:.45;':''}">
+      <div style="font-size:12px;${ds===today?'color:#f8d030':''}">${d}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:1px">${mons || (future||cs.length?'':'<span class="dim" style="font-size:11px">休</span>')}</div></div>`;
   }
-  const from28 = addDays(today,-28), act = Object.keys(vm).filter(d=>d>from28).length;
   const cur = blockAt(today);
+  const usedBlocks = sortedBlocks().filter(b => b.start <= ym+'-'+pad(lastDay) && blockEnd(b) >= startD);
   const chap = sortedBlocks().map((b,i) => {
     const t = BLOCK_TYPES[b.type], st = blockEnd(b) < today ? '✓' : b.start > today ? '・' : '▶';
     return `<button class="cmd${b===cur?' sel':''}" onclick="editBlock('${b.id}')"><span style="color:${t.color}">${st} 第 ${i+1} 章 ${esc(blockLabel(b))}</span><small>${b.start.slice(5)} 起・${b.weeks} 週・強度 ${t.pct.join('–')}%</small></button>`;
   }).join('');
   $('screen').innerHTML =
-    win('世界地圖', `<div class="heat">${heat}</div>
-      <div class="row" style="font-size:13px"><span class="dim">綠地＝出擊・海＝休息・底線＝章節</span><span>近 28 天 ${act} 天</span></div>`) +
+    win('冒險地圖', `<div class="row" style="margin-bottom:8px">
+        <button class="cmd" style="padding-left:4px" onclick="mapMonth--;SFX.cursor();renderMap()">◀ 上月</button>
+        <span class="gold">${first.getFullYear()} 年 ${first.getMonth()+1} 月</span>
+        <button class="cmd" onclick="mapMonth=Math.min(0,mapMonth+1);SFX.cursor();renderMap()" ${mapMonth>=0?'disabled':''}>下月 ▶</button></div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;text-align:center;font-size:12px" class="dim">${['一','二','三','四','五','六','日'].map(x=>`<div>${x}</div>`).join('')}</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px">${cells}</div>
+      <div class="row" style="margin-top:8px"><span>本月出擊 <span class="gold">${fought}</span> 天</span><span>總傷害 <span class="gold">${fmtNum(vol)}</span></span></div>
+      <div style="font-size:12px;line-height:1.8;margin-top:4px" class="dim">
+        <span style="display:inline-flex;gap:4px;align-items:center">${sprite('squat',14)}深蹲</span>
+        <span style="display:inline-flex;gap:4px;align-items:center;margin-left:8px">${sprite('bench',14)}臥推</span>
+        <span style="display:inline-flex;gap:4px;align-items:center;margin-left:8px">${sprite('deadlift',14)}硬舉</span>
+        <span style="display:inline-flex;gap:4px;align-items:center;margin-left:8px">${sprite('acc',14)}輔助</span><br>
+        綠格＝有出擊（點開看日誌）・休＝休息日・金框＝今天${usedBlocks.length?'・上方色條＝章節：'+usedBlocks.map(b=>`<span style="color:${BLOCK_TYPES[b.type].color}">${esc(blockLabel(b))}</span>`).join('、'):''}</div>`) +
     (cur ? win('目前章節', `<div class="row"><span style="color:${BLOCK_TYPES[cur.type].color}">${esc(blockLabel(cur))}</span><span>第 ${blockWeek(cur,today)} / ${cur.weeks} 週</span></div>
       ${bar(daysBetween(cur.start,today)+1, cur.weeks*7, 'exp')}`) : '') +
-    win('章節目錄', `<div>${chap || '<div class="dim">還沒有規劃章節（訓練週期）。</div>'}</div>
+    win('章節目錄（訓練週期）', `<div>${chap || '<div class="dim">還沒有規劃章節。章節就是訓練週期，例如 4 週累積期接 3 週強化期。</div>'}</div>
       <button class="cmd" onclick="editBlock()">＋ 新的章節</button>`);
-  $('screen').querySelectorAll('.tile[data-d]').forEach(t => t.onclick = () => { screen='log'; render(); const el = $('day-'+t.dataset.d); if (el) el.scrollIntoView({block:'center'}); });
+  $('screen').querySelectorAll('[data-d]').forEach(t => t.onclick = () => { screen='log'; render(); const el = $('day-'+t.dataset.d); if (el) el.scrollIntoView({block:'center'}); });
 }
 function editBlock(id) {
   const b = id ? blocks.find(x=>x.id===id) : null, last = sortedBlocks().slice(-1)[0];
