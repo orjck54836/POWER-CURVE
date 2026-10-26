@@ -92,11 +92,41 @@ input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); bor
 @keyframes aura { 50% { filter:drop-shadow(0 0 6px #f8d030) drop-shadow(0 0 14px #f89838); } }
 .board-row { display:grid; grid-template-columns:28px 40px 1fr auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px dashed #3a4a9a; }
 .board-row.me { background:rgba(248,208,48,.08); }
+
+.arena { justify-content:space-between; padding:0 6%; height:170px; align-items:flex-end; }
+.fighter { position:relative; }
+.fighter.swing { animation:swing .32s steps(6); }
+@keyframes swing { 0% { transform:none; } 35% { transform:translate(70px,-14px) rotate(-12deg); } 55% { transform:translate(80px,0) rotate(18deg); } 100% { transform:none; } }
+.fighter.knock { animation:knock .25s steps(4); }
+@keyframes knock { 30% { transform:translateX(16px); filter:brightness(3) saturate(0); } }
+.fighter.dead { animation:die 1s steps(6) forwards; }
+.slash { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); pointer-events:none; animation:slash .26s steps(4) forwards; }
+.slash.crit svg path { stroke:#f8d030; }
+@keyframes slash { 0% { clip-path:inset(0 100% 100% 0); } 60% { clip-path:inset(0 0 0 0); opacity:1; } 100% { opacity:0; } }
+.setcount { display:flex; justify-content:space-between; align-items:baseline; font-size:16px; }
+.setcount b { font-size:30px; color:var(--gold); font-weight:400; }
+.donesets { display:flex; flex-wrap:wrap; gap:4px 10px; font-size:13px; color:var(--dim); margin-top:4px; }
+.wIn { width:110px; margin:0; text-align:center; font-size:24px; color:var(--gold); padding:4px; }
+.endset { display:block; width:100%; height:84px; margin:0 0 14px; border:3px solid var(--line); border-radius:10px; background:linear-gradient(#58d858,#288838);
+  color:#05060f; font:inherit; font-size:28px; cursor:pointer; box-shadow:0 0 0 3px var(--bg), 0 7px 0 3px #145018; }
+.endset:active { transform:translateY(6px); box-shadow:0 0 0 3px var(--bg), 0 1px 0 3px #145018; }
+.endset small { display:block; font-size:14px; }
+.endset:disabled { filter:grayscale(1) brightness(.55); }
+.restbadge { position:fixed; top:calc(10px + env(safe-area-inset-top)); right:10px; z-index:30; background:var(--w2); color:var(--line); border:2px solid var(--line);
+  border-radius:6px; font:inherit; font-size:14px; padding:6px 10px; cursor:pointer; }
+.restbadge b { color:var(--gold); font-weight:400; }
+
+.arm-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.arm-item { background:var(--w2); border:2px solid #3a4a9a; border-radius:6px; color:var(--line); font:inherit; font-size:13px; padding:6px 2px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; min-height:104px; }
+.arm-item.on { border-color:var(--gold); background:#2a3070; }
+.arm-item:disabled { opacity:.45; cursor:default; }
+.arm-lock { height:52px; display:flex; align-items:center; font-size:24px; }
 </style>
 </head>
 <body>
 <div class="app" id="screen"></div>
 <nav class="menu"><div class="win"><div class="cmds" id="menu"></div></div></nav>
+<button class="restbadge" id="restBadge" hidden onclick="screen='battle';render()">休息中 <b>0:00</b></button>
 <div class="modal" id="modal" hidden><div class="win" id="modalWin"></div></div>
 <script>
 // ================= 核心資料與計算（與原版相同，資料完全相容） =================
@@ -181,7 +211,7 @@ const blockWeek = (b,d) => Math.floor(daysBetween(b.start,d)/7)+1;
 const blockLabel = b => b.name || BLOCK_TYPES[b.type].label;
 
 // ================= 狀態與儲存 =================
-let entries = [], profile = { bodyweight:null, sex:'male', heroName:'', joinBoard:false }, blocks = [];
+let entries = [], profile = { bodyweight:null, sex:'male', heroName:'', joinBoard:false, equip:{} }, blocks = [];
 let docRef = null, saveTimer = null, user = null, syncText = '本機模式';
 let screen = 'status';
 
@@ -338,59 +368,85 @@ const BASE_PAL = [
 // 每階的「半階強化」：靴子升級、腰帶、劍身 +1、細節變色
 const ODD_TWEAK = [ {}, {W:'#a8d8f8'}, {}, {}, {}, {c:'#8838b8'}, {W:'#a8f8f8'}, {F:'#f8f8f8'}, {c:'#f8d030'}, {F:'#f8d030', W:'#f8f8f8'} ];
 const TIER_PAL = Array.from({length:20}, (_,i) => Object.assign({}, BASE_PAL[i>>1], i%2 ? Object.assign({ k:'#f8d030' }, ODD_TWEAK[i>>1]) : {}));
-function heroPx(sex, t20) {
-  const tier = t20 >> 1, odd = t20 % 2;
-  const W = 20, H = 16, g = Array.from({length:H}, () => Array(W).fill('.'));
-  const put = (x,y,ch) => { if (x>=0&&x<W&&y>=0&&y<H) g[y][x] = ch; };
+// ---- 武器：每階 4 種，可選任何已解鎖階級 ----
+const WEAPON_TYPES = { sword:'劍', axe:'斧', spear:'槍', hammer:'錘' };
+const WEAPON_MAT = ['','練習','木','硬木','銅','青銅','鐵','精鋼','鋼','重鋼','騎士','近衛','蒼鋼','冰晶','炎','獄炎','黃金','星光','聖','創世'];
+const weaponName = (type, wt) => wt <= 0 ? '空手' : WEAPON_MAT[wt] + WEAPON_TYPES[type];
+// 取得實際裝備：沒選過就自動用最高階；力量掉階時自動降到可用的最高階
+function equipOf(total, sex, eq) {
+  const max = tierOf(total, sex);
+  eq = eq || {};
+  return { armor: Math.min(max, eq.armor ?? max), wt: Math.min(max, eq.wt ?? max), type: WEAPON_TYPES[eq.type] ? eq.type : 'sword', max };
+}
+function heroPx(sex, bodyTier, armorTier, wt, type) {
+  const tier = armorTier >> 1, odd = armorTier % 2;
+  const W = 22, OY = 4, H = 16 + OY, g = Array.from({length:H}, () => Array(W).fill('.'));
+  const put = (x,y,ch) => { y += OY; if (x>=0&&x<W&&y>=0&&y<H) g[y][x] = ch; };
   const stamp = (rows, ox, oy) => rows.forEach((r,y) => [...r].forEach((ch,x) => { if (ch!=='.') put(ox+x, oy+y, ch); }));
-  // 槓鈴：槓片越來越多
-  for (let x = 1; x < W-1; x++) put(x, 1, 'w');
-  const plates = 1 + Math.floor(t20/5);
-  for (let i = 0; i < plates; i++) for (let y = 0; y < 3; y++) { put(i, y, 'p'); put(W-1-i, y, 'p'); }
-  // 頭
+  // 槓鈴依真實力量
+  const BR = 16;
+  for (let x = 1; x < BR; x++) put(x, 1, 'w');
+  const plates = 1 + Math.floor(bodyTier/5);
+  for (let i = 0; i < plates; i++) for (let y = 0; y < 3; y++) { put(i, y, 'p'); put(BR-i, y, 'p'); }
   let head = sex==='female'
     ? ['..hhhhhh..','.hhhhhhhh.','.hhsssshh.','.hsessesh.','.h.ssss.h.']
     : ['...hhhh...','..hhhhhh..','..hssssh..','..sesses..','...ssss...'];
-  if (tier >= 4) head = head.map((r,i) => i < 2 ? r.replace(/h/g,'m') : r);
+  if (armorTier >= 8) head = head.map((r,i) => i < 2 ? r.replace(/h/g,'m') : r);
   stamp(head, 5, 3);
-  if (tier >= 8) stamp(['..y.yy.y..'], 5, 2);
-  // 身體：越強越壯
+  if (armorTier >= 16) stamp(['..y.yy.y..'], 5, 2);
+  // 體型依真實力量
   const thin = ['...a.tttt.a...','...a.tttt.a...','...s.tttt.s...','.....tttt.....','.....bbbb.....','....bb..bb....','....bb..bb....','...kkk..kkk...'];
   const mid  = ['...aattttaa...','...a.tttt.a...','...s.tttt.s...','....tttttt....','....bbbbbb....','....bb..bb....','....bb..bb....','...kkk..kkk...'];
   const buff = ['..aattttttaa..','.aaa.tttt.aaa.','.ss..tttt..ss.','....tttttt....','....bbbbbb....','...bbb..bbb...','...bbb..bbb...','..kkkk..kkkk..'];
   const huge = ['.aaattttttaaa.','aaaatttttttaaa','ss..tttttt..ss','...tttttttt...','....bbbbbb....','...bbb..bbb...','...bbb..bbb...','..kkkk..kkkk..'];
-  let body = (tier >= 7 ? huge : tier >= 4 ? buff : tier >= 2 ? mid : thin).slice();
-  if (tier >= 5) body = body.map((r,i) => i < 5 ? 'c' + r.slice(1,13) + 'c' : r);
+  let body = (bodyTier >= 14 ? huge : bodyTier >= 8 ? buff : bodyTier >= 4 ? mid : thin).slice();
+  if (armorTier >= 10) body = body.map((r,i) => i < 5 ? 'c' + r.slice(1,13) + 'c' : r);
   if (odd) body[4] = body[4].replace(/b/g,'L');
   stamp(body, 3, 8);
-  const handRow = 10, hr = body[2], rx = 3 + hr.lastIndexOf('s'), lx = 3 + hr.indexOf('s');
-  // 武器（右手）
-  const wx = rx + 1;
-  const blade = [0,4,3,5,5,7,7,8,8,9][tier] + (tier >= 1 ? odd : 0);
-  if (tier === 1) for (let i = 0; i < blade; i++) put(wx, handRow-i, 'n');
-  else if (tier >= 2) {
-    put(wx, handRow+1, 'n'); put(wx, handRow, 'n');
-    if (tier >= 3) { put(wx-1, handRow-1, 'H'); put(wx, handRow-1, 'H'); put(wx+1, handRow-1, 'H'); }
-    for (let i = 0; i < blade; i++) {
-      const y = handRow - 2 - i + (tier < 3 ? 1 : 0);
-      const ch = tier >= 7 && i % 2 ? 'F' : 'W';
-      put(wx, y, ch); if (tier >= 5) put(wx+1, y, ch);
-    }
+  const hr = 10, row = body[2], wx = 3 + row.lastIndexOf('s') + 1, lx = 3 + row.indexOf('s');
+  // 盾
+  if (armorTier >= 8) {
+    const sx = lx - 3, big = armorTier >= 10;
+    for (let y = hr-2; y <= hr+(big?2:1); y++) for (let x = sx; x < sx+3; x++) put(x, y, 'S');
+    put(sx+1, hr-1, 'E'); if (big) put(sx+1, hr, 'E');
   }
-  // 盾（左手）
-  if (tier >= 4) {
-    const sx = lx - 3, big = tier >= 5;
-    for (let y = handRow-2; y <= handRow+(big?2:1); y++) for (let x = sx; x < sx+3; x++) put(x, y, 'S');
-    put(sx+1, handRow-1, 'E'); if (big) put(sx+1, handRow, 'E');
+  // 武器
+  if (wt >= 1) {
+    const len = Math.min(10, 3 + Math.floor(wt/2)), wide = wt >= 10, fire = wt >= 14;
+    const blade = i => fire && i % 2 ? 'F' : 'W';
+    if (type === 'sword') {
+      put(wx, hr+1, 'n'); put(wx, hr, 'n');
+      if (wt >= 6) [-1,0,1].forEach(d => put(wx+d, hr-1, 'H'));
+      for (let i = 0; i < len; i++) { const y = hr-2-i; put(wx, y, blade(i)); if (wide) put(wx+1, y, blade(i)); }
+    } else if (type === 'axe') {
+      for (let i = -1; i <= len; i++) put(wx, hr-i, 'n');
+      const top = hr - len, hh = wide ? 4 : 3, hw = wide ? 3 : 2;
+      for (let y = 0; y < hh; y++) for (let x = 1; x <= hw; x++) put(wx+x, top+y, x===hw && fire ? 'F' : 'W');
+      if (wt >= 6) put(wx, top, 'H');
+    } else if (type === 'spear') {
+      const sl = len + 3;
+      for (let i = -2; i < sl; i++) put(wx, hr-i, 'n');
+      const tip = hr - sl;
+      put(wx, tip, 'W'); put(wx, tip-1, 'W'); [-1,1].forEach(d => put(wx+d, tip, wide ? blade(1) : 'W')); if (wide) put(wx, tip-2, 'W');
+      if (wt >= 6) { put(wx-1, tip+2, 'H'); put(wx+1, tip+2, 'H'); }
+      if (fire) put(wx, tip-1, 'F');
+    } else if (type === 'hammer') {
+      for (let i = -1; i < len; i++) put(wx, hr-i, 'n');
+      const top = hr - len - 2, hw = wide ? 5 : 4;
+      for (let y = 0; y < 3; y++) for (let x = 0; x < hw; x++) put(wx - 1 + x, top + y, y===1 && wt >= 6 ? (fire ? 'F' : 'H') : 'W');
+    }
   }
   return g.map(r => r.join(''));
 }
-function heroSprite(sex, total, size) {
-  const tier = tierOf(total, sex);
-  const pal = Object.assign({ h: sex==='female' ? '#783818' : '#3a2410', s:'#f8c890', e:'#101010', w:'#c8c8d8' }, TIER_PAL[tier]);
-  SPRITES['_hero'] = { pal, px: heroPx(sex, tier) };
+// eq：{armor, wt, type}；不傳就是自動最高階
+function heroSprite(sex, total, size, eq) {
+  const e = equipOf(total, sex, eq);
+  const pal = Object.assign({ h: sex==='female' ? '#783818' : '#3a2410', s:'#f8c890', e:'#101010', w:'#c8c8d8' }, TIER_PAL[e.armor]);
+  const wp = TIER_PAL[e.wt]; ['W','F','H','n'].forEach(k => { if (wp[k]) pal[k] = wp[k]; });
+  if (!pal.n) pal.n = '#a86830'; if (!pal.W) pal.W = '#c8c8d8';
+  SPRITES['_hero'] = { pal, px: heroPx(sex, e.max, e.armor, e.wt, e.type) };
   const svg = sprite('_hero', size);
-  return tier >= 18 ? svg.replace('class="sprite"', 'class="sprite aura"') : svg;
+  return e.armor >= 18 ? svg.replace('class="sprite"', 'class="sprite aura"') : svg;
 }
 
 // ================= 音效與震動 =================
@@ -429,7 +485,8 @@ function renderMenu() {
   $('menu').innerHTML = MENU.map(([k,l]) => `<button class="cmd${screen===k?' sel':''}" data-go="${k}">${l}</button>`).join('');
 }
 $('menu').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return;
-  if (B.active && b.dataset.go !== 'battle') { if (!confirm('要逃跑嗎？這一組還沒結束。')) return; endBattle(); }
+  if (B.active && B.reps && b.dataset.go !== 'battle' && !confirm('這一組還沒按「結束這一組」，離開會放棄已揮的次數。確定？')) return;
+  if (B.active && b.dataset.go !== 'battle') { B.reps = 0; B.dmg = 0; }
   screen = b.dataset.go; SFX.cursor(); render(); window.scrollTo(0,0); });
 function render() { renderMenu(); ({status:renderStatus, battle:renderBattleSelect, log:renderLog, map:renderMap, intel:renderIntel, board:renderBoard})[screen](); }
 // ================= 狀態畫面 =================
@@ -449,12 +506,13 @@ function renderStatus() {
   const blk = blockAt(todayStr());
   const sumNow = s.cur.reduce((a,b)=>a+b,0), tt = titleOf(sumNow);
   $('screen').innerHTML =
-    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sumNow, 84)}
+    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sumNow, 84, profile.equip)}
       <div style="flex:1">
         <div class="gold" style="font-size:22px">「${tt.name}」</div>
         <div class="row" style="font-size:13px"><span>職業</span><span>${jobOf(...s.cur)}</span></div>
-        <div class="row" style="font-size:13px"><span>裝備</span><span>${TIER_NAME[tierOf(sumNow, profile.sex)]}</span></div>
-        <div class="row" style="font-size:13px"><span>武器</span><span>${WEAPON_NAME[tierOf(sumNow, profile.sex)]}</span></div>
+        <div class="row" style="font-size:13px"><span>防具</span><span>${TIER_NAME[equipOf(sumNow, profile.sex, profile.equip).armor]}</span></div>
+        <div class="row" style="font-size:13px"><span>武器</span><span>${(e=>weaponName(e.type,e.wt))(equipOf(sumNow, profile.sex, profile.equip))}</span></div>
+        <button class="cmd sel" style="margin-top:4px" onclick="openArmory()">更換裝備<small>軍械庫</small></button>
         <div class="row" style="font-size:14px"><span>戰力</span><span style="color:${rk?rk[1]:'#a8b0e0'}">${s.power!=null ? Math.round(s.power)+'・'+rk[0] : '— 未鑑定'}</span></div>
       </div></div>`) +
     win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${sumNow ? round1(sumNow)+'kg' : '—'}</span></div>
@@ -510,9 +568,12 @@ function newAcc() {
     <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="const v=$('mAcc').value.trim(); if(v){closeModal(); startBattle('accessory', v);}">挑戰</button><button class="cmd" onclick="closeModal()">取消</button></div>`);
   setTimeout(()=>$('mAcc') && $('mAcc').focus(), 50);
 }
+function todayCardOf(cat, key) {
+  const d = todayStr();
+  return entries.find(c => c.date===d && c.category===cat && (cat==='main'?c.lift===key:c.exerciseName===key)) || null;
+}
 function startBattle(cat, key) {
-  const today = todayStr(), prev = lastCard(cat, key, today);
-  const t = entries.find(c => c.date===today && c.category===cat && (cat==='main'?c.lift===key:c.exerciseName===key));
+  const today = todayStr(), prev = lastCard(cat, key, today), t = todayCardOf(cat, key);
   const lastRow = (t && t.rows.slice(-1)[0]) || (prev && prev.rows[0]);
   Object.assign(B, { active:true, cat, key, sk: cat==='main'?key:'acc',
     name: cat==='main' ? SPRITES[key].name : key+'之狼',
@@ -520,39 +581,53 @@ function startBattle(cat, key) {
     dealt: t ? Math.round(cardVolume(t)) : 0,
     topPrev: prev ? Math.max(...prev.rows.map(r=>r.weight)) : 0,
     w: lastRow ? lastRow.weight : 20, rpe: lastRow && lastRow.rpe!=null ? lastRow.rpe : '',
-    reps: 0, sets: 1, dmg: 0, fatigue: 0, sub: null, rest: null, won: false });
+    reps:0, sets:1, dmg:0, fatigue:0, lastMsg:'' });
   B.won = B.dealt >= B.hpMax;
-  screen = 'battle'; SFX.win && beep([392,370,349,330],'square',.07);
+  screen = 'battle'; beep([392,370,349,330],'square',.07);
   render();
   say([`${B.name} 出現了！`, prev ? `上次留下的血量是 ${fmtNum(B.hpMax)}。` : '這是第一次交手。']);
 }
 const hpLeft = () => Math.max(0, B.hpMax - B.dealt - B.dmg*(B.sets||1));
+const setsDone = () => { const t = todayCardOf(B.cat, B.key); return t ? t.rows.reduce((a,r)=>a+r.sets,0) : 0; };
 function renderBattle() {
-  const fat = Math.min(100, B.fatigue), rest = !!B.rest;
-  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0);
+  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), t = todayCardOf(B.cat, B.key), done = setsDone();
   $('screen').innerHTML =
     win('', `<div class="row"><span>${esc(B.name)}</span><span class="dim">HP ${fmtNum(hpLeft())}/${fmtNum(B.hpMax)}</span></div>${bar(hpLeft(), B.hpMax)}`) +
-    `<div class="arena" id="arena">${sprite(B.sk, 140)}</div>` +
+    `<div class="arena" id="arena">
+       <div class="fighter" id="heroF">${heroSprite(profile.sex, sum, 84, profile.equip)}</div>
+       <div class="fighter" id="monF">${sprite(B.sk, 120)}</div>
+     </div>` +
+    win('', `<div class="setcount"><span>第 <b>${done+1}</b> 組</span><span class="dim">今天已完成 ${done} 組</span></div>
+      ${t ? `<div class="donesets">${t.rows.map((r,i)=>`<span>${i+1}. ${r.weight}×${r.reps}${r.sets>1?'×'+r.sets:''}${r.rpe!=null?'@'+r.rpe:''}</span>`).join('')}</div>` : ''}`) +
     win('', `<div class="msg" id="msg"></div>`) +
+    `<div id="restBox"></div>` +
     win('裝備', `
-      <div class="param"><span>重量</span><div class="step"><button data-w="-5">-5</button><button data-w="-2.5">-2.5</button><b>${B.w}</b><button data-w="2.5">+2.5</button><button data-w="5">+5</button></div></div>
-      <div class="param"><span>組數</span><div class="step"><button data-s="-1">-1</button><b>${B.sets}</b><button data-s="1">+1</button></div></div>
+      <div class="param"><span>重量</span><div class="step">
+        <button data-w="-2.5">−</button>
+        <input id="wIn" class="txt wIn" type="number" inputmode="decimal" step="0.5" min="0" value="${B.w}">
+        <span class="dim">kg</span><button data-w="2.5">＋</button></div></div>
       <div class="param"><span>RPE</span><div class="chips">${RPE_SKILLS.map(s=>`<button data-rpe="${s.v}" class="${String(s.v)===String(B.rpe)?'on':''}">${s.v===''?'—':s.v}</button>`).join('')}</div></div>
-      <div class="row" style="font-size:13px"><span class="dim">${B.rpe!==''?'招式：'+RPE_SKILLS.find(s=>String(s.v)===String(B.rpe)).n:'招式：不計 RPE'}</span><span class="dim">${B.sets>1?'結束時以 '+B.sets+' 組計算':''}</span></div>`) +
-    (rest ? restWin() : `<button class="atk" id="atk">ATTACK<small>${B.reps ? `第 ${B.reps} 下・這組 ${fmtNum(B.dmg*B.sets)} 傷害` : '每做完一下點一次'}</small></button>`) +
-    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sum, 40)}<div style="flex:1">
-      <div class="row" style="font-size:13px"><span class="dim">疲勞</span>${bar(100-fat, 100)}</div></div></div>
-      <div class="cmds" style="margin-top:6px">
-      <button class="cmd${B.reps?' sel':''}" ${B.reps&&!rest?'':'disabled'} onclick="endTurn()">結束這一組<small>${B.reps?`${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}`:'記錄這組'}</small></button>
-      <button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
+      <div class="param"><span style="font-size:13px">同重量<br>組數</span><div class="step"><button data-s="-1">−</button><b id="setsB">${B.sets}</b><button data-s="1">＋</button></div></div>`) +
+    `<button class="atk" id="atk">⚔ 揮劍<small id="atkSub">${B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次'}</small></button>` +
+    `<button class="endset" id="endBtn" ${B.reps?'':'disabled'}>結束這一組<small id="endSub">${B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先揮劍再結束'}</small></button>` +
+    win('', `<div class="cmds"><button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
       <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`);
-  const atk = $('atk'); if (atk) atk.addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
-  const keepMsg = () => { $('msg').textContent = B.lastMsg || ''; };
-  $('screen').querySelectorAll('[data-w]').forEach(b => b.onclick = () => { B.w = Math.max(0, round1(B.w+parseFloat(b.dataset.w))); SFX.cursor(); buzz(false); renderBattle(); });
-  $('screen').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { B.sets = Math.max(1, B.sets+parseInt(b.dataset.s)); SFX.cursor(); renderBattle(); });
-  $('screen').querySelectorAll('[data-rpe]').forEach(b => b.onclick = () => { B.rpe = b.dataset.rpe===''?'':parseFloat(b.dataset.rpe); SFX.cursor(); renderBattle(); });
-  const sp = $('arena').querySelector('.sprite'); if (B.won && !B.dmg) sp.style.opacity = .25;
-  keepMsg();
+  $('atk').addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
+  $('endBtn').onclick = endTurn;
+  $('wIn').addEventListener('input', e => { const v = parseFloat(e.target.value); if (v >= 0) { B.w = v; updEnd(); } });
+  $('screen').querySelectorAll('[data-w]').forEach(b => b.onclick = () => { B.w = Math.max(0, round1((parseFloat($('wIn').value)||0)+parseFloat(b.dataset.w))); $('wIn').value = B.w; SFX.cursor(); buzz(false); updEnd(); });
+  $('screen').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { B.sets = Math.max(1, B.sets+parseInt(b.dataset.s)); $('setsB').textContent = B.sets; SFX.cursor(); updEnd(); });
+  $('screen').querySelectorAll('[data-rpe]').forEach(b => b.onclick = () => { B.rpe = b.dataset.rpe===''?'':parseFloat(b.dataset.rpe);
+    $('screen').querySelectorAll('[data-rpe]').forEach(x => x.classList.toggle('on', x===b)); SFX.cursor(); updEnd(); });
+  if (B.won && !B.dmg) $('monF').style.opacity = .25;
+  $('msg').textContent = B.lastMsg || '';
+  drawRest();
+}
+function updEnd() {
+  const e = $('endBtn'); if (!e) return;
+  e.disabled = !B.reps;
+  $('endSub').textContent = B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先揮劍再結束';
+  $('atkSub').textContent = B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次';
 }
 let typeTimer = null;
 function say(lines) {
@@ -563,86 +638,121 @@ function say(lines) {
   el.onclick = () => { clearInterval(typeTimer); el.textContent = text; };
 }
 function attack() {
-  if (B.rest) return;
+  if (REST.endAt) endRest(true); // 開始下一組就自動結束休息
+  const w = parseFloat($('wIn').value); if (w >= 0) B.w = w;
   B.reps++;
-  const crit = B.topPrev > 0 && B.w > B.topPrev;
-  const dmg = Math.round(B.w);
-  const wasAlive = hpLeft() > 0;
+  const crit = B.topPrev > 0 && B.w > B.topPrev, dmg = Math.round(B.w), wasAlive = hpLeft() > 0;
   B.dmg += dmg;
-  B.fatigue += (B.rpe !== '' ? B.rpe : 7) * 1.2;
-  renderBattle();
-  const ar = $('arena'), sp = ar.querySelector('.sprite');
-  sp.classList.add('hit'); setTimeout(() => sp.classList.remove('hit'), 80);
-  const d = document.createElement('div'); d.className = 'dmg' + (crit?' crit':''); d.textContent = dmg;
-  d.style.left = (35+Math.random()*25)+'%'; d.style.top = (30+Math.random()*20)+'%'; ar.appendChild(d); setTimeout(()=>d.remove(), 700);
-  if (crit) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); SFX.crit(); buzz(true); }
-  else { SFX.hit(); buzz(false); }
-  const lines = [`${heroName()} 的攻擊！第 ${B.reps} 下`, crit ? `會心一擊！${B.name} 受到 ${dmg} 點傷害！` : `${B.name} 受到 ${dmg} 點傷害。`];
-  if (wasAlive && hpLeft() <= 0) { lines.push(`${B.name} 搖搖欲墜……按「結束這一組」給牠最後一擊！`); }
+  const hero = $('heroF'), mon = $('monF'), ar = $('arena');
+  hero.classList.remove('swing'); void hero.offsetWidth; hero.classList.add('swing');
+  setTimeout(() => {
+    const sl = document.createElement('div'); sl.className = 'slash' + (crit?' crit':'');
+    sl.innerHTML = '<svg viewBox="0 0 60 60" width="120" height="120"><path d="M8 10 L52 50" stroke="#fff" stroke-width="5"/><path d="M18 6 L56 40" stroke="#fff" stroke-width="2"/><path d="M4 22 L40 56" stroke="#fff" stroke-width="2"/></svg>';
+    mon.appendChild(sl); setTimeout(() => sl.remove(), 260);
+    mon.classList.remove('knock'); void mon.offsetWidth; mon.classList.add('knock');
+    const d = document.createElement('div'); d.className = 'dmg' + (crit?' crit':''); d.textContent = dmg;
+    d.style.right = (10+Math.random()*20)+'%'; d.style.top = (15+Math.random()*25)+'%'; ar.appendChild(d); setTimeout(()=>d.remove(), 700);
+    if (crit) { document.body.classList.remove('shake'); void document.body.offsetWidth; document.body.classList.add('shake'); SFX.crit(); buzz(true); }
+    else { SFX.hit(); buzz(false); }
+  }, 120);
+  $('heroF').querySelector('.sprite');
+  updEnd();
+  $('screen').querySelector('.win .bar > div').style.width = (hpLeft()/B.hpMax*100)+'%';
+  $('screen').querySelector('.win .row .dim').textContent = `HP ${fmtNum(hpLeft())}/${fmtNum(B.hpMax)}`;
+  const lines = [`${heroName()} 揮劍！第 ${B.reps} 下`, crit ? `會心一擊！${B.name} 受到 ${dmg} 點傷害！` : `${B.name} 受到 ${dmg} 點傷害。`];
+  if (wasAlive && hpLeft() <= 0) lines.push(`${B.name} 搖搖欲墜……按「結束這一組」給牠最後一擊！`);
   say(lines);
 }
 function snap() {
-  const s = rpgState();
   const pr = {}; LIFTS.forEach(k => { const b = allTimeBest(k); pr[k] = { e: b?b.val:0, r: [1,3,5,8].map(n => { const x = repBest(k,n); return x?x.weight:0; }) }; });
   return { sum: LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), pr };
 }
 function endTurn() {
   if (!B.reps) return;
+  const w = parseFloat($('wIn').value); if (w >= 0) B.w = w;
   const before = snap(), date = todayStr();
-  let card = entries.find(c => c.date===date && c.category===B.cat && (B.cat==='main'?c.lift===B.key:c.exerciseName===B.key));
+  let card = todayCardOf(B.cat, B.key);
   if (!card) { card = { id:uid(), date, category:B.cat, lift:B.cat==='main'?B.key:null, exerciseName:B.cat==='accessory'?B.key:null, rows:[] }; entries.push(card); }
   card.rows.push({ id:uid(), weight:B.w, reps:B.reps, sets:B.sets, rpe: B.rpe===''?null:parseFloat(B.rpe) });
-  save();
-  const after = snap();
-  const wasAlive = B.hpMax - B.dealt > 0;
-  B.dmg *= B.sets; B.dealt += B.dmg; B.dmg = 0;
-  const lines = [`這一組結束。${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`];
+  save(); // 立即寫入本機與雲端
+  const after = snap(), wasAlive = B.hpMax - B.dealt > 0;
+  B.dealt += B.dmg * B.sets;
+  const lines = [`第 ${setsDone()} 組完成！${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已記錄。`];
   if (B.cat === 'main') {
     const a = after.pr[B.key], b = before.pr[B.key], nm = MAIN_LIFTS[B.key].label;
     if (b.e && a.e > b.e) lines.push(`★ 獲得傳說道具「${nm}之魂 e1RM ${a.e}kg」！`);
     [1,3,5,8].forEach((n,i) => { if (b.r[i] && a.r[i] > b.r[i]) lines.push(`◆ 獲得「${nm}之證・${n}RM ${a.r[i]}kg」！`); });
   }
-  B.reps = 0; B.sets = 1;
+  B.reps = 0; B.dmg = 0; B.sets = 1;
   const killed = wasAlive && hpLeft() <= 0;
   if (killed) { B.won = true; lines.unshift(`${B.name} 被打倒了！`); }
+  startRest(); // 休息立刻開始計時
   renderBattle(); say(lines);
-  if (killed) { const sp = $('arena').querySelector('.sprite'); sp.classList.add('dead'); SFX.win(); buzz(true); }
-  else SFX.ok();
+  if (killed) { $('monF').classList.add('dead'); SFX.win(); buzz(true); } else SFX.ok();
   const tb = tierOf(before.sum, profile.sex), ta = tierOf(after.sum, profile.sex);
   if (Math.floor(after.sum/50) > Math.floor(before.sum/50)) setTimeout(() => lvUpFx(`稱號晉升「${titleOf(after.sum).name}」`), killed ? 1200 : 500);
-  if (ta > tb) setTimeout(() => lvUpFx(`獲得 ${TIER_NAME[ta]}・${WEAPON_NAME[ta]}`), killed ? 3000 : 2300);
-  setTimeout(startRest, killed ? 2600 : 1500);
+  if (ta > tb) setTimeout(() => lvUpFx(`解鎖新裝備：${TIER_NAME[ta]}與 4 種${WEAPON_MAT[ta]}武器`), killed ? 3000 : 2300);
 }
-function restWin() {
-  const r = B.rest, l = Math.max(0, r.left);
-  return win('旅館', `<div class="row"><span>休息中・體力恢復</span><span class="gold big">${Math.floor(l/60)}:${pad(l%60)}</span></div>
-    ${bar(r.max-l, r.max, 'mp')}
-    <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="restAdj(-30)">少休 30 秒</button><button class="cmd" onclick="restAdj(30)">多休 30 秒</button>
-      <button class="cmd sel" onclick="endRest()">出發！</button><button class="cmd" onclick="flee()">今天到此為止</button></div>`);
-}
+
+// ---- 組間休息：以結束時間戳計時，切頁、鎖屏、切到背景都不會停 ----
+const REST = { endAt:0, max:0, timer:null };
 function startRest() {
-  if (!B.active) return;
   const max = B.cat === 'main' ? 180 : 90;
-  B.rest = { left:max, max, f0:B.fatigue };
-  clearInterval(B.restTimer);
-  B.restTimer = setInterval(() => {
-    B.rest.left--; B.fatigue = Math.max(0, B.rest.f0 * B.rest.left / B.rest.max);
-    if (B.rest.left <= 0) { endRest(); SFX.rest(); buzz(true); say(['體力完全恢復了！', '準備好就繼續攻擊。']); return; }
-    if (screen === 'battle') { const keep = B.lastMsg; renderBattle(); $('msg').textContent = keep; }
-  }, 1000);
-  renderBattle(); $('msg').textContent = B.lastMsg;
+  REST.endAt = Date.now() + max*1000; REST.max = max;
+  localStorage.setItem('pq_rest', JSON.stringify({ endAt:REST.endAt, max }));
+  scheduleRestNotice();
+  runRestTimer();
 }
-function restAdj(n) { B.rest.left = Math.max(1, B.rest.left+n); B.rest.max = Math.max(B.rest.max, B.rest.left); SFX.cursor(); renderBattle(); $('msg').textContent = B.lastMsg; }
-function endRest() { clearInterval(B.restTimer); B.rest = null; B.fatigue = Math.min(B.fatigue, B.fatigue); renderBattle(); $('msg').textContent = B.lastMsg; }
+function restLeft() { return Math.max(0, Math.ceil((REST.endAt - Date.now())/1000)); }
+function runRestTimer() {
+  clearInterval(REST.timer);
+  REST.timer = setInterval(() => {
+    if (!REST.endAt) return clearInterval(REST.timer);
+    if (restLeft() <= 0) { endRest(); SFX.rest(); buzz(true); if (screen==='battle') say(['休息結束，體力完全恢復！', '開始下一組吧。']); return; }
+    drawRest();
+  }, 250);
+  drawRest();
+}
+function drawRest() {
+  const box = $('restBox'), badge = $('restBadge');
+  const l = restLeft(), txt = `${Math.floor(l/60)}:${pad(l%60)}`;
+  if (badge) { badge.hidden = !REST.endAt || screen === 'battle'; badge.querySelector('b').textContent = txt; }
+  if (!box) return;
+  if (!REST.endAt || screen !== 'battle') { box.innerHTML = ''; return; }
+  if (!$('restT')) box.innerHTML = win('組間休息', `<div class="row"><span>體力恢復中</span><span class="gold big" id="restT"></span></div><div class="bar mp"><div id="restBar"></div></div>
+    <div class="cmds" style="margin-top:6px"><button class="cmd" onclick="restAdj(-30)">−30 秒</button><button class="cmd" onclick="restAdj(30)">＋30 秒</button>
+    <button class="cmd" onclick="endRest(true)">跳過休息</button></div>`);
+  $('restT').textContent = txt;
+  $('restBar').style.width = ((REST.max - l)/REST.max*100) + '%';
+}
+function restAdj(n) {
+  REST.endAt = Math.max(Date.now()+1000, REST.endAt + n*1000); REST.max = Math.max(REST.max, restLeft());
+  localStorage.setItem('pq_rest', JSON.stringify({ endAt:REST.endAt, max:REST.max })); scheduleRestNotice(); SFX.cursor(); drawRest();
+}
+function endRest(silent) {
+  REST.endAt = 0; clearInterval(REST.timer); localStorage.removeItem('pq_rest'); cancelRestNotice();
+  if ($('restBox')) $('restBox').innerHTML = ''; if ($('restBadge')) $('restBadge').hidden = true;
+}
+// App 在背景時用本地通知提醒（需安裝 @capacitor/local-notifications，沒裝就略過）
+function scheduleRestNotice() {
+  const LN = window.Capacitor?.Plugins?.LocalNotifications; if (!LN) return;
+  LN.cancel({ notifications:[{ id:7001 }] }).catch(()=>{});
+  LN.schedule({ notifications:[{ id:7001, title:'休息結束', body:'體力完全恢復，開始下一組！', schedule:{ at:new Date(REST.endAt) } }] }).catch(()=>{});
+}
+function cancelRestNotice() { const LN = window.Capacitor?.Plugins?.LocalNotifications; if (LN) LN.cancel({ notifications:[{ id:7001 }] }).catch(()=>{}); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && REST.endAt) { if (restLeft() <= 0) { endRest(); SFX.rest(); } else drawRest(); } });
+(function resumeRest() { try { const r = JSON.parse(localStorage.getItem('pq_rest')||'null'); if (r && r.endAt > Date.now()) { REST.endAt = r.endAt; REST.max = r.max; setTimeout(runRestTimer, 0); } else localStorage.removeItem('pq_rest'); } catch {} })();
+
 function scout() {
   const p = lastCard(B.cat, B.key, todayStr());
   say(p ? [`上次（${p.date.slice(5)}）的招式：`, p.rows.map(r => `${r.weight}×${r.reps}${r.sets>1?'×'+r.sets:''}${r.rpe!=null?'@'+r.rpe:''}`).join('、')] : ['沒有這隻怪物的情報。']);
 }
 function flee() {
-  if (B.reps && !confirm('這一組還沒按「結束這一組」，撤退會放棄。確定？')) return;
+  if (B.reps && !confirm('這一組還沒按「結束這一組」，撤退會放棄這一組。確定？')) return;
   endBattle(); screen = 'battle'; render();
 }
-function endBattle() { clearInterval(B.restTimer); B.active = false; B.rest = null; B.lastMsg = ''; }
+function endBattle() { B.active = false; B.lastMsg = ''; }
+
 
 function openTitles() {
   const sumNow = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), cur = Math.min(TITLES.length-1, Math.floor(sumNow/50));
@@ -656,7 +766,7 @@ function openTitles() {
       <span>${me?'▶ ':''}${got||me?TITLES[i]:'？？？'}</span></div>`;
   }).join('');
   const gal = TIER_NAME.map((n,i) => `<div style="text-align:center;font-size:12px;${i<=tier?'':'opacity:.3'}">
-      ${heroSprite(sex, tierCut(i,sex), 56)}<div>${n}</div><div class="dim" style="font-size:11px">${WEAPON_NAME[i]}</div><div class="${i===tier?'gold':'dim'}">${tierCut(i,sex)}kg</div></div>`).join('');
+      ${heroSprite(sex, tierCut(i,sex), 56)}<div>${n}</div><div class="dim" style="font-size:11px">${WEAPON_MAT[i]?WEAPON_MAT[i]+'武器':'空手'}</div><div class="${i===tier?'gold':'dim'}">${tierCut(i,sex)}kg</div></div>`).join('');
   openModal(`<div class="win-t">稱號一覽</div>
     <div class="row"><span>目前總和</span><span class="gold">${round1(sumNow)}kg・「${TITLES[cur]}」</span></div>
     <div class="dim" style="font-size:12px;margin-bottom:6px">每 50kg 晉升一個稱號，未解鎖的顯示為？？？</div>
@@ -678,6 +788,37 @@ function evalWin(cur) {
     <div class="row" style="font-size:13px;margin-top:4px"><span class="dim">臥推／深蹲 ${Math.round(ev.ratios.bpSq*100)}%</span><span class="dim">硬舉／深蹲 ${Math.round(ev.ratios.dlSq*100)}%</span></div>
     <div style="font-size:14px;line-height:1.6;margin-top:6px"><span class="gold">修煉建議：</span><br>${ev.advice}</div>
     <div class="dim" style="font-size:11px;margin-top:6px">100%＝一般${profile.sex==='female'?'女性':'男性'}選手的比例，虛線三角形為基準。±5% 以外判定為強項或弱項。</div>`);
+}
+
+// ================= 軍械庫 =================
+let armTab = 'weapon', armType = null;
+function openArmory() {
+  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), sex = profile.sex, cur = equipOf(sum, sex, profile.equip);
+  if (!armType) armType = cur.type;
+  const tab = (k,l) => `<button class="cmd${armTab===k?' sel':''}" onclick="armTab='${k}';SFX.cursor();openArmory()">${l}</button>`;
+  let grid = '';
+  for (let i = (armTab==='weapon'?1:0); i < 20; i++) {
+    const lock = i > cur.max;
+    const eq = armTab==='weapon' ? { armor:cur.armor, wt:i, type:armType } : { armor:i, wt:cur.wt, type:cur.type };
+    const on = armTab==='weapon' ? (cur.wt===i && cur.type===armType) : cur.armor===i;
+    const name = armTab==='weapon' ? weaponName(armType, i) : TIER_NAME[i];
+    grid += `<button class="arm-item${on?' on':''}" ${lock?'disabled':''} onclick="equip(${i})">
+      ${lock ? `<div class="arm-lock">🔒</div>` : heroSprite(sex, sum, 52, eq)}
+      <div>${lock ? '？？？' : name}</div><div class="dim" style="font-size:11px">${lock ? tierCut(i,sex)+'kg 解鎖' : on ? '裝備中' : ''}</div></button>`;
+  }
+  openModal(`<div class="win-t">軍械庫</div>
+    <div class="cmds" style="grid-template-columns:1fr 1fr;margin-bottom:6px">${tab('weapon','武器')}${tab('armor','防具')}</div>
+    ${armTab==='weapon' ? `<div class="chips" style="justify-content:flex-start;margin-bottom:8px">
+      ${Object.entries(WEAPON_TYPES).map(([k,l])=>`<button class="${armType===k?'on':''}" onclick="armType='${k}';SFX.cursor();openArmory()">${l}</button>`).join('')}
+      <button class="${cur.wt===0?'on':''}" onclick="equip(0)">空手</button></div>` : ''}
+    <div class="dim" style="font-size:12px;margin-bottom:6px">已解鎖到第 ${cur.max+1} 階（${round1(sum)}kg）。目前與以下階級的${armTab==='weapon'?'武器':'防具'}都能自由選擇。</div>
+    <div class="arm-grid">${grid}</div>
+    <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="profile.equip={};save();syncBoard();SFX.ok();openArmory();render()">自動裝備最強</button><button class="cmd sel" onclick="closeModal()">關閉</button></div>`);
+}
+function equip(i) {
+  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), cur = equipOf(sum, profile.sex, profile.equip);
+  profile.equip = armTab==='weapon' ? { armor:cur.armor, wt:i, type:armType || cur.type } : { armor:i, wt:cur.wt, type:cur.type };
+  save(); syncBoard(); SFX.ok(); buzz(false); openArmory(); render();
 }
 // ================= 冒險日誌 =================
 let logLimit = 10;
@@ -880,7 +1021,7 @@ let boardRows = null, boardSort = 'total', boardErr = '';
 function myBoardDoc() {
   const lifts = {}; LIFTS.forEach(k => lifts[k] = refE1RM(k) ? round1(refE1RM(k)) : 0);
   const total = round1(lifts.squat + lifts.bench + lifts.deadlift);
-  return { name: heroName().slice(0,16), sex: profile.sex, total, ...lifts,
+  return { name: heroName().slice(0,16), sex: profile.sex, total, ...lifts, equip: profile.equip || {},
     dots: total && profile.bodyweight && LIFTS.every(k=>lifts[k]) ? round1(dots(total, profile.bodyweight, profile.sex)) : 0,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
 }
@@ -916,7 +1057,7 @@ function renderBoard() {
         <button class="cmd${boardSort==='dots'?' sel':''}" onclick="boardSort='dots';SFX.cursor();renderBoard()">戰力 DOTS</button></div>
       ${boardErr ? `<div class="red">${esc(boardErr)}</div>` : ''}
       ${rows.length ? rows.map((r,i) => `<div class="board-row${r.uid===user.uid?' me':''}">
-        <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36)}
+        <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36, r.equip)}
         <div><div>${esc(r.name||'無名勇者')}</div>
           <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」${(()=>{const ev=evaluate([r.squat,r.bench,r.deadlift], r.sex);return ev?`<span style="color:#78d8f8">${ev.job.name}</span>`:''})()}<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
         <span class="gold" style="font-size:18px">${boardSort==='total' ? r.total : r.dots}</span></div>`).join('')
