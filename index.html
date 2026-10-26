@@ -33,8 +33,8 @@ body { padding:calc(10px + env(safe-area-inset-top)) 10px calc(120px + env(safe-
 @keyframes blink { 50% { opacity:0; } }
 .menu { position:fixed; left:0; right:0; bottom:0; padding:0 10px calc(10px + env(safe-area-inset-bottom)); z-index:20; }
 .menu .win { max-width:520px; margin:0 auto; padding:6px 8px; }
-.menu .cmds { grid-template-columns:repeat(5,1fr); gap:0; }
-.menu .cmd { font-size:14px; padding:10px 0 8px 14px; }
+.menu .cmds { grid-template-columns:repeat(6,1fr); gap:0; }
+.menu .cmd { font-size:13px; padding:10px 0 8px 12px; white-space:nowrap; }
 .menu .cmd::before { top:11px; font-size:11px; left:0; }
 .sprite { image-rendering:pixelated; display:block; }
 .hero-box { display:flex; gap:14px; align-items:center; }
@@ -74,6 +74,23 @@ input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); bor
 .lvup span { font-size:46px; color:var(--gold); text-shadow:3px 3px 0 #000; animation:lv 1.6s steps(8) forwards; }
 @keyframes lv { 0% { transform:scale(.3); } 25% { transform:scale(1.2); } 40%,80% { transform:scale(1); opacity:1; } 100% { opacity:0; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+
+.atk { display:block; width:100%; margin:14px 0; height:96px; border:3px solid var(--line); border-radius:10px; background:linear-gradient(#e04848,#a01828);
+  color:#fff; font:inherit; font-size:34px; letter-spacing:6px; cursor:pointer; box-shadow:0 0 0 3px var(--bg), 0 7px 0 3px #5a0c16; touch-action:manipulation; user-select:none; -webkit-user-select:none; }
+.atk:active { transform:translateY(6px); box-shadow:0 0 0 3px var(--bg), 0 1px 0 3px #5a0c16; }
+.atk small { display:block; font-size:13px; letter-spacing:0; opacity:.9; }
+.atk:disabled { filter:grayscale(.8) brightness(.6); }
+.param { display:grid; grid-template-columns:52px 1fr; align-items:center; gap:6px; margin:6px 0; }
+.param .step { margin:0; justify-content:flex-end; }
+.param .step b { min-width:70px; font-size:22px; }
+.param .step button { min-width:40px; height:36px; font-size:14px; }
+.chips { display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; }
+.chips button { background:var(--w2); color:var(--dim); border:2px solid #5a64a8; border-radius:4px; font:inherit; font-size:13px; padding:4px 6px; cursor:pointer; }
+.chips button.on { color:var(--bg); background:var(--gold); border-color:var(--line); }
+.aura { animation:aura 1.6s ease-in-out infinite; }
+@keyframes aura { 50% { filter:drop-shadow(0 0 6px #f8d030) drop-shadow(0 0 14px #f89838); } }
+.board-row { display:grid; grid-template-columns:28px 40px 1fr auto; gap:8px; align-items:center; padding:6px 0; border-bottom:1px dashed #3a4a9a; }
+.board-row.me { background:rgba(248,208,48,.08); }
 </style>
 </head>
 <body>
@@ -163,7 +180,7 @@ const blockWeek = (b,d) => Math.floor(daysBetween(b.start,d)/7)+1;
 const blockLabel = b => b.name || BLOCK_TYPES[b.type].label;
 
 // ================= 狀態與儲存 =================
-let entries = [], profile = { bodyweight:null, sex:'male' }, blocks = [];
+let entries = [], profile = { bodyweight:null, sex:'male', heroName:'', joinBoard:false }, blocks = [];
 let docRef = null, saveTimer = null, user = null, syncText = '本機模式';
 let screen = 'status';
 
@@ -176,7 +193,7 @@ const auth = firebase.auth(), db = firebase.firestore();
 
 function loadLocal() {
   try { entries = migrateLegacyEntries(JSON.parse(localStorage.getItem('pl_entries')||'[]')); } catch { entries = []; }
-  try { profile = Object.assign({bodyweight:null,sex:'male'}, JSON.parse(localStorage.getItem('pl_profile')||'{}')); } catch {}
+  try { profile = Object.assign({bodyweight:null,sex:'male',heroName:'',joinBoard:false}, JSON.parse(localStorage.getItem('pl_profile')||'{}')); } catch {}
   try { const b = JSON.parse(localStorage.getItem('pl_blocks')||'[]'); blocks = Array.isArray(b)?b:[]; } catch { blocks = []; }
 }
 auth.onAuthStateChanged(async u => {
@@ -188,7 +205,7 @@ auth.onAuthStateChanged(async u => {
     if (snap.exists && snap.data().entries) {
       const d = snap.data();
       entries = migrateLegacyEntries(d.entries);
-      profile = d.profile ? { bodyweight:d.profile.bodyweight??null, sex:d.profile.sex||'male' } : profile;
+      profile = d.profile ? Object.assign({ heroName:'', joinBoard:false }, d.profile, { bodyweight:d.profile.bodyweight??null, sex:d.profile.sex||'male' }) : profile;
       blocks = Array.isArray(d.blocks) ? d.blocks : blocks;
     } else { loadLocal(); if (entries.length) save(); }
     syncText = '雲端同步';
@@ -203,7 +220,7 @@ function save() {
   if (!docRef) return;
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async () => {
-    try { await docRef.set({ entries, profile, blocks, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); syncText = '雲端同步'; }
+    try { await docRef.set({ entries, profile, blocks, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }); syncText = '雲端同步'; syncBoard(); }
     catch { syncText = '同步失敗'; }
   }, 500);
 }
@@ -230,12 +247,10 @@ function rankOf(p) {
   return p >= 530 ? ['傳說','#f89838'] : p >= 470 ? ['秘銀','#78d8f8'] : p >= 400 ? ['黃金','#f8d030'] :
          p >= 320 ? ['白銀','#d8dce8'] : p >= 250 ? ['青銅','#c88850'] : ['見習','#a8b0e0'];
 }
-const heroName = () => (user && user.displayName ? user.displayName.split(' ')[0] : '勇者');
+const heroName = () => (profile.heroName || (user && user.displayName ? user.displayName.split(' ')[0] : '勇者'));
 
 // ================= 像素圖 =================
 const SPRITES = {
-  hero: { pal:{h:'#3a2410',s:'#f8c890',e:'#101010',t:'#d83838',a:'#f8c890',b:'#2848a8',k:'#583818',w:'#c8c8d8',g:'#505060'},
-    px:["g..........g","gwwwwwwwwwwg","g...hhhh...g","...hhhhhh...","...hssssh...","...sesses...","..a.ssss.a..","..attttttta.","...tttttt...","....tttt....","....bbbb....","...bb..bb...","...bb..bb...","..kkk..kkk.."] },
   squat: { name:'岩石巨像', pal:{g:'#606878',G:'#9098a8',r:'#f83838'},
     px:["....gggggg....","...gGGGGGGg...","..gGrGGGGrGg..","..gGGGGGGGGg..",".ggGGgggggGgg.","gGGGGGGGGGGGGg","gGgGGGGGGGGgGg","gGg.gGGGGg.gGg","ggg.gGGGGg.ggg","....gGggGg....","...ggg..ggg...","...ggg..ggg..."] },
   bench: { name:'熔岩幼龍', pal:{r:'#a82818',O:'#f87828',y:'#f8f048',w:'#f8f8f8',R:'#c83828',o:'#f8c860'},
@@ -253,6 +268,46 @@ function sprite(key, size) {
 }
 const monKey = c => c.category==='main' ? c.lift : 'acc';
 const exLabel = c => c.category==='main' ? MAIN_LIFTS[c.lift].label : c.exerciseName;
+
+// ---- 勇者外觀：依性別與三項總和變化 ----
+const TITLES = ['新手','村民','見習生','民兵','士兵','劍士','戰士','騎士','精英騎士','聖騎士','劍聖','英雄','傳說英雄','半神','戰神','泰坦','神話','星辰之力','天地主宰','超越者'];
+function titleOf(total) {
+  const i = Math.min(TITLES.length-1, Math.floor((total||0)/50));
+  const next = i < TITLES.length-1 ? (i+1)*50 : null;
+  return { name:TITLES[i], next, nextName: next ? TITLES[i+1] : null };
+}
+// 外觀階級門檻（kg，三項總和），女性依體型比例下修
+const TIER_CUT = { male:[0,250,350,450,550,650], female:[0,150,210,270,330,400] };
+function tierOf(total, sex) { const c = TIER_CUT[sex==='female'?'female':'male']; let t = 0; c.forEach((v,i)=>{ if ((total||0) >= v) t = i; }); return t; }
+const TIER_NAME = ['布衣','皮甲','鋼鐵鎧','黃金鎧','秘銀鎧','傳說神裝'];
+const TIER_PAL = [
+  { t:'#d83838', a:'#f8c890', b:'#2848a8', k:'#583818', p:'#505060' },
+  { t:'#a86830', a:'#f8c890', b:'#384878', k:'#583818', p:'#3868c8' },
+  { t:'#c0c8d8', a:'#f8c890', b:'#283868', k:'#606878', p:'#3868c8', c:'#c83838' },
+  { t:'#e8b830', a:'#c0c8d8', b:'#283868', k:'#a87818', p:'#d83838', c:'#c83838' },
+  { t:'#78d8f8', a:'#c0e8f8', b:'#1a2a6a', k:'#4898c8', p:'#d83838', c:'#8838b8', y:'#f8d030' },
+  { t:'#f8f8f8', a:'#f8e8a8', b:'#e8b830', k:'#f8d030', p:'#f89838', c:'#f8d030', y:'#f8f048' },
+];
+function heroPx(sex, tier) {
+  const bar = ['pp..........pp','pwwwwwwwwwwwwp'];
+  const head = sex==='female'
+    ? ['....hhhhhh....','...hhhhhhhh...','...hhsssshh...','...hsessesh...','...h.ssss.h...']
+    : ['.....hhhh.....','....hhhhhh....','....hssssh....','....sesses....','.....ssss.....'];
+  const thin = ['...a.tttt.a...','...a.tttt.a...','...s.tttt.s...','.....tttt.....','.....bbbb.....','....bb..bb....','....bb..bb....','...kkk..kkk...'];
+  const mid  = ['...aattttaa...','...a.tttt.a...','...s.tttt.s...','....tttttt....','....bbbbbb....','....bb..bb....','....bb..bb....','...kkk..kkk...'];
+  const buff = ['..aattttttaa..','.aaa.tttt.aaa.','.ss..tttt..ss.','....tttttt....','....bbbbbb....','...bbb..bbb...','...bbb..bbb...','..kkkk..kkkk..'];
+  let body = (tier >= 2 ? buff : tier === 1 ? mid : thin).slice();
+  if (tier >= 3) body = body.map((r,i) => i < 5 ? 'c' + r.slice(1,13) + 'c' : r);
+  const crown = tier >= 4 ? ['....y.yy.y....'] : [];
+  return [...bar, ...crown, ...head, ...body];
+}
+function heroSprite(sex, total, size) {
+  const tier = tierOf(total, sex);
+  const pal = Object.assign({ h: sex==='female' ? '#783818' : '#3a2410', s:'#f8c890', e:'#101010', w:'#c8c8d8' }, TIER_PAL[tier]);
+  SPRITES['_hero'] = { pal, px: heroPx(sex, tier) };
+  const svg = sprite('_hero', size);
+  return tier >= 5 ? svg.replace('class="sprite"', 'class="sprite aura"') : svg;
+}
 
 // ================= 音效與震動 =================
 let actx = null;
@@ -285,14 +340,14 @@ function lvUpFx(L) {
   document.body.appendChild(d); setTimeout(()=>d.remove(), 1700); SFX.lv(); buzz(true);
 }
 
-const MENU = [['status','狀態'],['battle','戰鬥'],['log','日誌'],['map','地圖'],['intel','情報']];
+const MENU = [['status','狀態'],['battle','戰鬥'],['log','日誌'],['map','地圖'],['intel','情報'],['board','英雄榜']];
 function renderMenu() {
   $('menu').innerHTML = MENU.map(([k,l]) => `<button class="cmd${screen===k?' sel':''}" data-go="${k}">${l}</button>`).join('');
 }
 $('menu').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return;
   if (B.active && b.dataset.go !== 'battle') { if (!confirm('要逃跑嗎？這一組還沒結束。')) return; endBattle(); }
   screen = b.dataset.go; SFX.cursor(); render(); window.scrollTo(0,0); });
-function render() { renderMenu(); ({status:renderStatus, battle:renderBattleSelect, log:renderLog, map:renderMap, intel:renderIntel})[screen](); }
+function render() { renderMenu(); ({status:renderStatus, battle:renderBattleSelect, log:renderLog, map:renderMap, intel:renderIntel, board:renderBoard})[screen](); }
 // ================= 狀態畫面 =================
 function renderStatus() {
   const s = rpgState(), lo = lvExp(s.L), hi = lvExp(s.L+1);
@@ -308,15 +363,18 @@ function renderStatus() {
   const days = new Set(entries.map(c=>c.date)), from28 = addDays(todayStr(),-28);
   const recent = [...days].filter(d=>d>from28).length;
   const blk = blockAt(todayStr());
+  const sumNow = s.cur.reduce((a,b)=>a+b,0), tt = titleOf(sumNow);
   $('screen').innerHTML =
-    win(esc(heroName()), `<div class="hero-box">${sprite('hero', 84)}
+    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sumNow, 84)}
       <div style="flex:1">
-        <div class="row"><span>${jobOf(...s.cur)}</span><span>Lv <span class="gold big">${s.L}</span></span></div>
+        <div class="row"><span class="gold">「${tt.name}」</span><span>Lv <span class="gold big">${s.L}</span></span></div>
+        <div class="row" style="font-size:13px"><span>${jobOf(...s.cur)}</span><span class="dim">${TIER_NAME[tierOf(sumNow, profile.sex)]}</span></div>
         <div class="row" style="font-size:13px"><span class="dim">EXP</span>${bar(s.exp-lo, hi-lo, 'exp')}</div>
         <div class="row" style="font-size:13px"><span class="dim">${fmtNum(s.exp)}</span><span class="dim">下一級還差 ${fmtNum(hi-s.exp)}</span></div>
         <div class="row" style="font-size:14px"><span>戰力</span><span style="color:${rk?rk[1]:'#a8b0e0'}">${s.power!=null ? Math.round(s.power)+'・'+rk[0] : '— 未鑑定'}</span></div>
       </div></div>`) +
-    win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${s.total ? round1(s.total)+'kg' : '—'}</span></div>`) +
+    win('能力值', statRows + `<div class="row" style="margin-top:6px"><span>三項總和</span><span class="gold">${sumNow ? round1(sumNow)+'kg' : '—'}</span></div>
+      ${tt.next ? `<div class="row" style="font-size:13px"><span class="dim">下一稱號「${tt.nextName}」</span><span class="dim">還差 ${round1(tt.next-sumNow)}kg</span></div>${bar(sumNow-(tt.next-50), 50, 'exp')}` : '<div class="gold">已達最高稱號</div>'}`) +
     (blk ? win('目前章節', `<div class="row"><span style="color:${BLOCK_TYPES[blk.type].color}">${esc(blockLabel(blk))}</span><span>第 ${blockWeek(blk,todayStr())} / ${blk.weeks} 週</span></div>
       <div class="row" style="font-size:13px"><span class="dim">建議強度 ${BLOCK_TYPES[blk.type].pct.join('–')}%</span></div>`) : '') +
     win('道具袋', items.length ? items.join('') : '<div class="dim">還沒有任何證物。打倒怪物就會掉落。</div>') +
@@ -376,42 +434,39 @@ function startBattle(cat, key) {
     dealt: t ? Math.round(cardVolume(t)) : 0,
     topPrev: prev ? Math.max(...prev.rows.map(r=>r.weight)) : 0,
     w: lastRow ? lastRow.weight : 20, rpe: lastRow && lastRow.rpe!=null ? lastRow.rpe : '',
-    reps: 0, dmg: 0, fatigue: 0, sub: null, rest: null, won: false });
+    reps: 0, sets: 1, dmg: 0, fatigue: 0, sub: null, rest: null, won: false });
   B.won = B.dealt >= B.hpMax;
   screen = 'battle'; SFX.win && beep([392,370,349,330],'square',.07);
   render();
   say([`${B.name} 出現了！`, prev ? `上次留下的血量是 ${fmtNum(B.hpMax)}。` : '這是第一次交手。']);
 }
-const hpLeft = () => Math.max(0, B.hpMax - B.dealt - B.dmg);
+const hpLeft = () => Math.max(0, B.hpMax - B.dealt - B.dmg*(B.sets||1));
 function renderBattle() {
-  const fat = Math.min(100, B.fatigue);
+  const fat = Math.min(100, B.fatigue), rest = !!B.rest;
+  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0);
   $('screen').innerHTML =
     win('', `<div class="row"><span>${esc(B.name)}</span><span class="dim">HP ${fmtNum(hpLeft())}/${fmtNum(B.hpMax)}</span></div>${bar(hpLeft(), B.hpMax)}`) +
-    `<div class="arena" id="arena">${sprite(B.sk, 150)}</div>` +
-    win(esc(heroName()), `<div class="row"><span>武器</span><span class="gold">${B.w} kg</span></div>
-      <div class="row"><span>氣力</span><span>${B.rpe!=='' ? 'RPE '+B.rpe+'・'+RPE_SKILLS.find(s=>String(s.v)===String(B.rpe)).n : '不計'}</span></div>
-      <div class="row"><span>本回合</span><span>${B.reps} 下・${fmtNum(B.dmg)} 傷害</span></div>
-      <div class="row" style="font-size:13px"><span class="dim">疲勞</span>${bar(100-fat, 100)}</div>`) +
+    `<div class="arena" id="arena">${sprite(B.sk, 140)}</div>` +
     win('', `<div class="msg" id="msg"></div>`) +
-    (B.rest ? restWin() : B.sub === 'weapon' ? weaponWin() : B.sub === 'skill' ? skillWin() : win('', `<div class="cmds">
-      <button class="cmd sel" id="atk">攻擊<small>每做一下點一次</small></button>
-      <button class="cmd" onclick="B.sub='weapon';SFX.cursor();renderBattle()">武器<small>調整重量</small></button>
-      <button class="cmd" onclick="B.sub='skill';SFX.cursor();renderBattle()">氣力<small>選擇 RPE</small></button>
-      <button class="cmd" ${B.reps?'':'disabled'} onclick="endTurn()">結束回合<small>記錄這組</small></button>
+    win('裝備', `
+      <div class="param"><span>重量</span><div class="step"><button data-w="-5">-5</button><button data-w="-2.5">-2.5</button><b>${B.w}</b><button data-w="2.5">+2.5</button><button data-w="5">+5</button></div></div>
+      <div class="param"><span>組數</span><div class="step"><button data-s="-1">-1</button><b>${B.sets}</b><button data-s="1">+1</button></div></div>
+      <div class="param"><span>RPE</span><div class="chips">${RPE_SKILLS.map(s=>`<button data-rpe="${s.v}" class="${String(s.v)===String(B.rpe)?'on':''}">${s.v===''?'—':s.v}</button>`).join('')}</div></div>
+      <div class="row" style="font-size:13px"><span class="dim">${B.rpe!==''?'招式：'+RPE_SKILLS.find(s=>String(s.v)===String(B.rpe)).n:'招式：不計 RPE'}</span><span class="dim">${B.sets>1?'結束時以 '+B.sets+' 組計算':''}</span></div>`) +
+    (rest ? restWin() : `<button class="atk" id="atk">ATTACK<small>${B.reps ? `第 ${B.reps} 下・本回合 ${fmtNum(B.dmg*B.sets)} 傷害` : '每做完一下點一次'}</small></button>`) +
+    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sum, 40)}<div style="flex:1">
+      <div class="row" style="font-size:13px"><span class="dim">疲勞</span>${bar(100-fat, 100)}</div></div></div>
+      <div class="cmds" style="margin-top:6px">
+      <button class="cmd${B.reps?' sel':''}" ${B.reps&&!rest?'':'disabled'} onclick="endTurn()">結束回合<small>${B.reps?`${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}`:'記錄這組'}</small></button>
       <button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
-      <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`));
+      <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`);
   const atk = $('atk'); if (atk) atk.addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
+  const keepMsg = () => { $('msg').textContent = B.lastMsg || ''; };
+  $('screen').querySelectorAll('[data-w]').forEach(b => b.onclick = () => { B.w = Math.max(0, round1(B.w+parseFloat(b.dataset.w))); SFX.cursor(); buzz(false); renderBattle(); });
+  $('screen').querySelectorAll('[data-s]').forEach(b => b.onclick = () => { B.sets = Math.max(1, B.sets+parseInt(b.dataset.s)); SFX.cursor(); renderBattle(); });
+  $('screen').querySelectorAll('[data-rpe]').forEach(b => b.onclick = () => { B.rpe = b.dataset.rpe===''?'':parseFloat(b.dataset.rpe); SFX.cursor(); renderBattle(); });
   const sp = $('arena').querySelector('.sprite'); if (B.won && !B.dmg) sp.style.opacity = .25;
-  $('msg').textContent = B.lastMsg || '';
-}
-function weaponWin() {
-  return win('武器', `<div class="step"><button onclick="wAdj(-10)">-10</button><button onclick="wAdj(-2.5)">-2.5</button><b>${B.w}</b><button onclick="wAdj(2.5)">+2.5</button><button onclick="wAdj(10)">+10</button></div>
-    <div class="step"><button onclick="wAdj(-1)">-1</button><button onclick="wAdj(-5)">-5</button><button onclick="wAdj(5)">+5</button><button onclick="wAdj(1)">+1</button></div>
-    <div class="cmds"><button class="cmd sel" onclick="B.sub=null;SFX.ok();renderBattle()">裝備完成</button></div>`);
-}
-function wAdj(n) { B.w = Math.max(0, round1(B.w+n)); SFX.cursor(); buzz(false); renderBattle(); }
-function skillWin() {
-  return win('氣力', `<div class="cmds">${RPE_SKILLS.map(s => `<button class="cmd${String(s.v)===String(B.rpe)?' sel':''}" onclick="B.rpe=${s.v===''?"''":s.v};B.sub=null;SFX.ok();renderBattle()">${s.n}<small>${s.v===''?'不填 RPE':'RPE '+s.v}</small></button>`).join('')}</div>`);
+  keepMsg();
 }
 let typeTimer = null;
 function say(lines) {
@@ -450,18 +505,18 @@ function endTurn() {
   const before = snap(), date = todayStr();
   let card = entries.find(c => c.date===date && c.category===B.cat && (B.cat==='main'?c.lift===B.key:c.exerciseName===B.key));
   if (!card) { card = { id:uid(), date, category:B.cat, lift:B.cat==='main'?B.key:null, exerciseName:B.cat==='accessory'?B.key:null, rows:[] }; entries.push(card); }
-  card.rows.push({ id:uid(), weight:B.w, reps:B.reps, sets:1, rpe: B.rpe===''?null:parseFloat(B.rpe) });
+  card.rows.push({ id:uid(), weight:B.w, reps:B.reps, sets:B.sets, rpe: B.rpe===''?null:parseFloat(B.rpe) });
   save();
   const after = snap();
   const wasAlive = B.hpMax - B.dealt > 0;
-  B.dealt += B.dmg;
-  const lines = [`回合結束。${B.w}kg × ${B.reps}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`, `獲得 ${after.exp-before.exp} EXP！`];
+  B.dmg *= B.sets; B.dealt += B.dmg; B.dmg = 0;
+  const lines = [`回合結束。${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''} 已寫入日誌。`, `獲得 ${after.exp-before.exp} EXP！`];
   if (B.cat === 'main') {
     const a = after.pr[B.key], b = before.pr[B.key], nm = MAIN_LIFTS[B.key].label;
     if (b.e && a.e > b.e) lines.push(`★ 獲得傳說道具「${nm}之魂 e1RM ${a.e}kg」！`);
     [1,3,5,8].forEach((n,i) => { if (b.r[i] && a.r[i] > b.r[i]) lines.push(`◆ 獲得「${nm}之證・${n}RM ${a.r[i]}kg」！`); });
   }
-  B.reps = 0; B.dmg = 0;
+  B.reps = 0; B.sets = 1;
   const killed = wasAlive && hpLeft() <= 0;
   if (killed) { B.won = true; lines.unshift(`${B.name} 被打倒了！`); }
   renderBattle(); say(lines);
@@ -627,6 +682,62 @@ function renderIntel() {
       <div class="row"><span class="${fc}">${fl}</span><span class="dim">7 天 ${fmtNum(acute)}</span></div>`) +
     win('技能書', `<div class="cmds" style="grid-template-columns:repeat(3,1fr);margin-bottom:6px">${LIFTS.map(k=>`<button class="cmd${intelLift===k?' sel':''}" onclick="intelLift='${k}';SFX.cursor();renderIntel()">${MAIN_LIFTS[k].label}</button>`).join('')}</div>
       <div class="row"><span>推測極限</span><span class="gold">${e1?round1(e1)+'kg':'—'}</span></div>${book}`);
+}
+
+// ================= 英雄榜 =================
+// Firestore 規則需加上：
+// match /leaderboard/{uid} { allow read: if request.auth != null; allow write: if request.auth != null && request.auth.uid == uid; }
+let boardRows = null, boardSort = 'total', boardErr = '';
+function myBoardDoc() {
+  const lifts = {}; LIFTS.forEach(k => lifts[k] = refE1RM(k) ? round1(refE1RM(k)) : 0);
+  const total = round1(lifts.squat + lifts.bench + lifts.deadlift);
+  const s = rpgState();
+  return { name: heroName().slice(0,16), sex: profile.sex, total, ...lifts,
+    dots: total && profile.bodyweight && LIFTS.every(k=>lifts[k]) ? round1(dots(total, profile.bodyweight, profile.sex)) : 0,
+    level: s.L, updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+}
+function syncBoard() {
+  if (!user) return;
+  const ref = db.collection('leaderboard').doc(user.uid);
+  (profile.joinBoard ? ref.set(myBoardDoc()) : ref.delete()).catch(() => {});
+}
+async function loadBoard() {
+  boardErr = '';
+  try {
+    const snap = await db.collection('leaderboard').orderBy('total','desc').limit(100).get();
+    boardRows = snap.docs.map(d => Object.assign({ uid:d.id }, d.data()));
+  } catch (e) { boardRows = []; boardErr = '讀取失敗：請確認 Firestore 規則已開放 leaderboard。'; }
+  if (screen === 'board') renderBoard();
+}
+function renderBoard() {
+  if (!user) {
+    $('screen').innerHTML = win('英雄榜', `<div class="msg" style="min-height:0">要登錄英雄榜，必須先以 Google 登入。</div>
+      <button class="cmd sel" onclick="login()">Google 登入</button>`);
+    return;
+  }
+  if (boardRows === null) { $('screen').innerHTML = win('英雄榜', '<div class="msg" style="min-height:0">正在召集各地的英雄……</div>'); loadBoard(); return; }
+  const rows = [...boardRows].filter(r => boardSort==='total' ? r.total > 0 : r.dots > 0)
+    .sort((a,b) => (b[boardSort]||0) - (a[boardSort]||0));
+  const medal = i => i===0 ? '<span class="gold">1</span>' : i===1 ? '<span style="color:#d8dce8">2</span>' : i===2 ? '<span style="color:#c88850">3</span>' : `<span class="dim">${i+1}</span>`;
+  $('screen').innerHTML =
+    win('登錄', `<div class="row"><span>英雄名</span><span>${esc(heroName())}</span></div>
+      <div class="cmds"><button class="cmd" onclick="openHeroName()">更改名字</button>
+      <button class="cmd${profile.joinBoard?' sel':''}" onclick="profile.joinBoard=!profile.joinBoard;save();syncBoard();boardRows=null;SFX.ok();renderBoard()">${profile.joinBoard?'已登錄・點此退出':'登錄英雄榜'}<small>公開名字與三項成績</small></button></div>`) +
+    win('英雄榜', `<div class="cmds" style="margin-bottom:6px">
+        <button class="cmd${boardSort==='total'?' sel':''}" onclick="boardSort='total';SFX.cursor();renderBoard()">三項總和</button>
+        <button class="cmd${boardSort==='dots'?' sel':''}" onclick="boardSort='dots';SFX.cursor();renderBoard()">戰力 DOTS</button></div>
+      ${boardErr ? `<div class="red">${esc(boardErr)}</div>` : ''}
+      ${rows.length ? rows.map((r,i) => `<div class="board-row${r.uid===user.uid?' me':''}">
+        <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36)}
+        <div><div>${esc(r.name||'無名勇者')} <span class="dim" style="font-size:12px">Lv${r.level||1}</span></div>
+          <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
+        <span class="gold" style="font-size:18px">${boardSort==='total' ? r.total : r.dots}</span></div>`).join('')
+        : '<div class="dim">榜上還沒有英雄。成為第一個吧。</div>'}
+      <button class="cmd" onclick="boardRows=null;renderBoard()">重新整理</button>`);
+}
+function openHeroName() {
+  openModal(`<div class="win-t">英雄名</div><input class="txt" id="mHn" maxlength="16" value="${esc(heroName())}">
+    <div class="cmds" style="margin-top:8px"><button class="cmd sel" onclick="profile.heroName=$('mHn').value.trim();save();syncBoard();closeModal();boardRows=null;render()">決定</button><button class="cmd" onclick="closeModal()">取消</button></div>`);
 }
 
 // ================= 啟動 =================
