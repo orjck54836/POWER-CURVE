@@ -145,6 +145,8 @@ input.txt, select.txt { width:100%; background:var(--bg); color:var(--line); bor
 @keyframes cross { 0% { transform:translate(-50%,-50%) scale(.2) rotate(45deg); opacity:1; } 100% { transform:translate(-50%,-50%) scale(1.4) rotate(45deg); opacity:0; } }
 .fx.scrflash { position:fixed; inset:0; left:0; top:0; z-index:45; opacity:.45; animation:scrf .28s steps(3) forwards; }
 @keyframes scrf { to { opacity:0; } }
+.fx.signame { left:50%; top:4px; transform:translateX(-50%); font-size:22px; text-shadow:2px 2px 0 #000; white-space:nowrap; animation:sig .7s steps(7) forwards; }
+@keyframes sig { 0% { transform:translateX(-50%) scale(1.6); } 30% { transform:translateX(-50%) scale(1); } 100% { opacity:0; transform:translate(-50%,-14px); } }
 </style>
 </head>
 <body>
@@ -316,11 +318,12 @@ function evaluate(cur, sex) {
   if (ns >= 2 || (nw === 1 && ns === 0)) job = JOBS[weakKey[rel.indexOf(Math.min(...rel))]];
   else if (ns === 1) job = JOBS[strongKey[strong.indexOf(true)]];
   else job = JOBS.balanced;
+  const jobKey = Object.keys(JOBS).find(k => JOBS[k] === job);
   const WEAK_ADV = ['深蹲：加入暫停深蹲、前蹲，強化股四頭與軀幹剛性。','臥推：頻率提高到每週 3 次，加入窄握臥推、啞鈴臥推補強三頭與胸。','硬舉：加入羅馬尼亞硬舉、赤字硬舉，強化後鏈、起槓速度與握力。'];
   const weakList = [0,1,2].filter(i => weak[i]);
   const advice = weakList.length ? weakList.map(i => WEAK_ADV[i]).join('<br>') : job.adv;
   const grade = rel.map(r => r > 1+TH ? ['強項','green'] : r < 1-TH ? ['弱項','red'] : ['標準','dim']);
-  return { job, rel, grade, advice, ratios: { bpSq: bp/sq, dlSq: dl/sq } };
+  return { job, jobKey, rel, grade, advice, ratios: { bpSq: bp/sq, dlSq: dl/sq } };
 }
 function jobOf(sq, bp, dl) { const ev = evaluate([sq,bp,dl], profile.sex); return ev ? ev.job.name : '見習冒險者'; }
 function radarSvg(rel, size) {
@@ -395,12 +398,28 @@ const TIER_PAL = Array.from({length:20}, (_,i) => Object.assign({}, BASE_PAL[i>>
 // ---- 武器：每階 4 種，可選任何已解鎖階級 ----
 const WEAPON_TYPES = { sword:'劍', axe:'斧', spear:'槍', hammer:'錘' };
 const WEAPON_MAT = ['','練習','木','硬木','銅','青銅','鐵','精鋼','鋼','重鋼','騎士','近衛','蒼鋼','冰晶','炎','獄炎','黃金','星光','聖','創世'];
-const weaponName = (type, wt) => wt <= 0 ? '空手' : WEAPON_MAT[wt] + WEAPON_TYPES[type];
+// 職業 → 可用武器（第一個是專精武器）與專精武器名稱、專精特效色
+const JOB_WEAPONS = {
+  balanced:     { types:['sword','axe','spear','hammer'], sig:'勇者之劍', color:'#f8f8f8' },
+  squat:        { types:['hammer','sword'],  sig:'鎮地錘', color:'#c0c8d8' },
+  bench:        { types:['spear','sword'],   sig:'騎槍',   color:'#78d8f8' },
+  deadlift:     { types:['axe','hammer'],    sig:'破城斧', color:'#f85858' },
+  weakBench:    { types:['hammer','axe'],    sig:'巨岩錘', color:'#c88850' },
+  weakSquat:    { types:['axe','spear'],     sig:'狂戰斧', color:'#f89838' },
+  weakDeadlift: { types:['sword','spear'],   sig:'聖堂劍', color:'#f8d030' },
+  novice:       { types:['sword','axe','spear','hammer'], sig:null, color:'#ffffff' },
+};
+const jobKeyOf = (sq, bp, dl, sex) => { const ev = evaluate([sq,bp,dl], sex); return ev ? ev.jobKey : 'novice'; };
+const myJobKey = () => jobKeyOf(...LIFTS.map(k => refE1RM(k)||0), profile.sex);
+const isSig = (type, job) => job !== 'novice' && JOB_WEAPONS[job].types[0] === type;
+const weaponName = (type, wt, job) => wt <= 0 ? '空手' : WEAPON_MAT[wt] + (job && isSig(type, job) && JOB_WEAPONS[job].sig ? '・' + JOB_WEAPONS[job].sig : WEAPON_TYPES[type]);
 // 取得實際裝備：沒選過就自動用最高階；力量掉階時自動降到可用的最高階
-function equipOf(total, sex, eq) {
+function equipOf(total, sex, eq, job) {
   const max = tierOf(total, sex);
-  eq = eq || {};
-  return { armor: Math.min(max, eq.armor ?? max), wt: Math.min(max, eq.wt ?? max), type: WEAPON_TYPES[eq.type] ? eq.type : 'sword', max };
+  eq = eq || {}; job = job || 'novice';
+  const allowed = JOB_WEAPONS[job].types;
+  const type = allowed.includes(eq.type) ? eq.type : allowed[0];
+  return { armor: Math.min(max, eq.armor ?? max), wt: Math.min(max, eq.wt ?? max), type, max, job, sig: isSig(type, job) };
 }
 function heroPx(sex, bodyTier, armorTier, wt, type) {
   const tier = armorTier >> 1, odd = armorTier % 2;
@@ -463,11 +482,12 @@ function heroPx(sex, bodyTier, armorTier, wt, type) {
   return g.map(r => r.join(''));
 }
 // eq：{armor, wt, type}；不傳就是自動最高階
-function heroSprite(sex, total, size, eq) {
-  const e = equipOf(total, sex, eq);
+function heroSprite(sex, total, size, eq, job) {
+  const e = equipOf(total, sex, eq, job);
   const pal = Object.assign({ h: sex==='female' ? '#783818' : '#3a2410', s:'#f8c890', e:'#101010', w:'#c8c8d8' }, TIER_PAL[e.armor]);
   const wp = TIER_PAL[e.wt]; ['W','F','H','n'].forEach(k => { if (wp[k]) pal[k] = wp[k]; });
   if (!pal.n) pal.n = '#a86830'; if (!pal.W) pal.W = '#c8c8d8';
+  if (e.sig && e.wt >= 1) { pal.H = JOB_WEAPONS[e.job].color; pal.n = JOB_WEAPONS[e.job].color; }
   SPRITES['_hero'] = { pal, px: heroPx(sex, e.max, e.armor, e.wt, e.type) };
   const svg = sprite('_hero', size);
   return e.armor >= 18 ? svg.replace('class="sprite"', 'class="sprite aura"') : svg;
@@ -530,12 +550,12 @@ function renderStatus() {
   const blk = blockAt(todayStr());
   const sumNow = s.cur.reduce((a,b)=>a+b,0), tt = titleOf(sumNow);
   $('screen').innerHTML =
-    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sumNow, 84, profile.equip)}
+    win(esc(heroName()), `<div class="hero-box">${heroSprite(profile.sex, sumNow, 84, profile.equip, myJobKey())}
       <div style="flex:1">
         <div class="gold" style="font-size:22px">「${tt.name}」</div>
         <div class="row" style="font-size:13px"><span>職業</span><span>${jobOf(...s.cur)}</span></div>
-        <div class="row" style="font-size:13px"><span>防具</span><span>${TIER_NAME[equipOf(sumNow, profile.sex, profile.equip).armor]}</span></div>
-        <div class="row" style="font-size:13px"><span>武器</span><span>${(e=>weaponName(e.type,e.wt))(equipOf(sumNow, profile.sex, profile.equip))}</span></div>
+        <div class="row" style="font-size:13px"><span>防具</span><span>${TIER_NAME[equipOf(sumNow, profile.sex, profile.equip, myJobKey()).armor]}</span></div>
+        <div class="row" style="font-size:13px"><span>武器</span><span>${(e=>(e.sig&&e.wt?'★ ':'')+weaponName(e.type,e.wt,e.job))(equipOf(sumNow, profile.sex, profile.equip, myJobKey()))}</span></div>
         <button class="cmd sel" style="margin-top:4px" onclick="openArmory()">更換裝備<small>軍械庫</small></button>
         <div class="row" style="font-size:14px"><span>戰力</span><span style="color:${rk?rk[1]:'#a8b0e0'}">${s.power!=null ? Math.round(s.power)+'・'+rk[0] : '— 未鑑定'}</span></div>
       </div></div>`) +
@@ -618,7 +638,7 @@ function renderBattle() {
   $('screen').innerHTML =
     win('', `<div class="row"><span>${esc(B.name)}</span><span class="dim">HP ${fmtNum(hpLeft())}/${fmtNum(B.hpMax)}</span></div>${bar(hpLeft(), B.hpMax)}`) +
     `<div class="arena" id="arena">
-       <div class="fighter" id="heroF">${heroSprite(profile.sex, sum, 84, profile.equip)}</div>
+       <div class="fighter" id="heroF">${heroSprite(profile.sex, sum, 84, profile.equip, myJobKey())}</div>
        <div class="fighter" id="monF">${sprite(B.sk, 120)}</div>
      </div>` +
     win('', `<div class="setcount"><span>第 <b>${done+1}</b> 組</span><span class="dim">今天已完成 ${done} 組</span></div>
@@ -632,8 +652,8 @@ function renderBattle() {
         <span class="dim">kg</span><button data-w="2.5">＋</button></div></div>
       <div class="param"><span>RPE</span><div class="chips">${RPE_SKILLS.map(s=>`<button data-rpe="${s.v}" class="${String(s.v)===String(B.rpe)?'on':''}">${s.v===''?'—':s.v}</button>`).join('')}</div></div>
       <div class="param"><span style="font-size:13px">同重量<br>組數</span><div class="step"><button data-s="-1">−</button><b id="setsB">${B.sets}</b><button data-s="1">＋</button></div></div>`) +
-    `<button class="atk" id="atk">⚔ 揮劍<small id="atkSub">${B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次'}</small></button>` +
-    `<button class="endset" id="endBtn" ${B.reps?'':'disabled'}>結束這一組<small id="endSub">${B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先揮劍再結束'}</small></button>` +
+    `<button class="atk" id="atk">${(e=>!e.wt?'👊 出拳':{sword:'⚔ 揮劍',axe:'🪓 劈斧',spear:'➶ 突刺',hammer:'🔨 重錘'}[e.type])(equipOf(sum, profile.sex, profile.equip, myJobKey()))}<small id="atkSub">${B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次'}</small></button>` +
+    `<button class="endset" id="endBtn" ${B.reps?'':'disabled'}>結束這一組<small id="endSub">${B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先攻擊再結束'}</small></button>` +
     win('', `<div class="cmds"><button class="cmd" onclick="scout()">偵察<small>上次的招式</small></button>
       <button class="cmd" onclick="flee()">撤退<small>離開戰鬥</small></button></div>`);
   $('atk').addEventListener('pointerdown', e => { e.preventDefault(); attack(); });
@@ -650,7 +670,7 @@ function renderBattle() {
 function updEnd() {
   const e = $('endBtn'); if (!e) return;
   e.disabled = !B.reps;
-  $('endSub').textContent = B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先揮劍再結束';
+  $('endSub').textContent = B.reps ? `${B.w}kg × ${B.reps}${B.sets>1?' × '+B.sets+'組':''}${B.rpe!==''?' @'+B.rpe:''}` : '先攻擊再結束';
   $('atkSub').textContent = B.reps ? `第 ${B.reps} 下・${fmtNum(B.dmg)} 傷害` : '每做完一下點一次';
 }
 let typeTimer = null;
@@ -668,7 +688,7 @@ function attack() {
   const crit = B.topPrev > 0 && B.w > B.topPrev, dmg = Math.round(B.w), wasAlive = hpLeft() > 0;
   B.dmg += dmg;
   const hero = $('heroF'), mon = $('monF'), ar = $('arena');
-  const eq = equipOf(LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), profile.sex, profile.equip);
+  const eq = equipOf(LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), profile.sex, profile.equip, myJobKey());
   hero.className = 'fighter'; void hero.offsetWidth; hero.classList.add('swing-' + (eq.wt ? eq.type : 'sword'));
   setTimeout(() => {
     weaponFx(eq, crit, mon, ar);
@@ -680,7 +700,7 @@ function attack() {
   updEnd();
   $('screen').querySelector('.win .bar > div').style.width = (hpLeft()/B.hpMax*100)+'%';
   $('screen').querySelector('.win .row .dim').textContent = `HP ${fmtNum(hpLeft())}/${fmtNum(B.hpMax)}`;
-  const lines = [`${heroName()} 揮劍！第 ${B.reps} 下`, crit ? `會心一擊！${B.name} 受到 ${dmg} 點傷害！` : `${B.name} 受到 ${dmg} 點傷害。`];
+  const lines = [`${heroName()} ${!eq.wt?'出拳':{sword:'揮劍',axe:'劈斧',spear:'突刺',hammer:'砸下重錘'}[eq.type]}！第 ${B.reps} 下`, crit ? `會心一擊！${B.name} 受到 ${dmg} 點傷害！` : `${B.name} 受到 ${dmg} 點傷害。`];
   if (wasAlive && hpLeft() <= 0) lines.push(`${B.name} 搖搖欲墜……按「結束這一組」給牠最後一擊！`);
   say(lines);
 }
@@ -814,30 +834,34 @@ function evalWin(cur) {
 // ================= 軍械庫 =================
 let armTab = 'weapon', armType = null;
 function openArmory() {
-  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), sex = profile.sex, cur = equipOf(sum, sex, profile.equip);
-  if (!armType) armType = cur.type;
+  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), sex = profile.sex, job = myJobKey(), cur = equipOf(sum, sex, profile.equip, job);
+  const allowed = JOB_WEAPONS[job].types;
+  if (!armType || !allowed.includes(armType)) armType = cur.type;
   const tab = (k,l) => `<button class="cmd${armTab===k?' sel':''}" onclick="armTab='${k}';SFX.cursor();openArmory()">${l}</button>`;
   let grid = '';
   for (let i = (armTab==='weapon'?1:0); i < 20; i++) {
     const lock = i > cur.max;
     const eq = armTab==='weapon' ? { armor:cur.armor, wt:i, type:armType } : { armor:i, wt:cur.wt, type:cur.type };
     const on = armTab==='weapon' ? (cur.wt===i && cur.type===armType) : cur.armor===i;
-    const name = armTab==='weapon' ? weaponName(armType, i) : TIER_NAME[i];
+    const name = armTab==='weapon' ? weaponName(armType, i, job) : TIER_NAME[i];
     grid += `<button class="arm-item${on?' on':''}" ${lock?'disabled':''} onclick="equip(${i})">
-      ${lock ? `<div class="arm-lock">🔒</div>` : heroSprite(sex, sum, 52, eq)}
+      ${lock ? `<div class="arm-lock">🔒</div>` : heroSprite(sex, sum, 52, eq, job)}
       <div>${lock ? '？？？' : name}</div><div class="dim" style="font-size:11px">${lock ? tierCut(i,sex)+'kg 解鎖' : on ? '裝備中' : ''}</div></button>`;
   }
   openModal(`<div class="win-t">軍械庫</div>
     <div class="cmds" style="grid-template-columns:1fr 1fr;margin-bottom:6px">${tab('weapon','武器')}${tab('armor','防具')}</div>
     ${armTab==='weapon' ? `<div class="chips" style="justify-content:flex-start;margin-bottom:8px">
-      ${Object.entries(WEAPON_TYPES).map(([k,l])=>`<button class="${armType===k?'on':''}" onclick="armType='${k}';SFX.cursor();openArmory()">${l}</button>`).join('')}
-      <button class="${cur.wt===0?'on':''}" onclick="equip(0)">空手</button></div>` : ''}
+      ${Object.entries(WEAPON_TYPES).map(([k,l])=> allowed.includes(k)
+        ? `<button class="${armType===k?'on':''}" onclick="armType='${k}';SFX.cursor();openArmory()">${isSig(k,job)?'★':''}${l}</button>`
+        : `<button disabled style="opacity:.35">🔒${l}</button>`).join('')}
+      <button class="${cur.wt===0?'on':''}" onclick="equip(0)">空手</button></div>
+      <div style="font-size:13px;margin-bottom:6px">職業 <span class="gold">${job==='novice'?'見習冒險者':JOBS[job].name}</span>：可用 ${allowed.map(t=>WEAPON_TYPES[t]).join('、')}${job!=='novice'?`，<span style="color:${JOB_WEAPONS[job].color}">★ 專精武器「${JOB_WEAPONS[job].sig}」</span>有專屬特效`:'。三項都有紀錄後會依能力型別決定專精武器'}</div>` : ''}
     <div class="dim" style="font-size:12px;margin-bottom:6px">已解鎖到第 ${cur.max+1} 階（${round1(sum)}kg）。目前與以下階級的${armTab==='weapon'?'武器':'防具'}都能自由選擇。</div>
     <div class="arm-grid">${grid}</div>
     <div class="cmds" style="margin-top:8px"><button class="cmd" onclick="profile.equip={};save();syncBoard();SFX.ok();openArmory();render()">自動裝備最強</button><button class="cmd sel" onclick="closeModal()">關閉</button></div>`);
 }
 function equip(i) {
-  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), cur = equipOf(sum, profile.sex, profile.equip);
+  const sum = LIFTS.reduce((a,k)=>a+(refE1RM(k)||0),0), cur = equipOf(sum, profile.sex, profile.equip, myJobKey());
   profile.equip = armTab==='weapon' ? { armor:cur.armor, wt:i, type:armType || cur.type } : { armor:i, wt:cur.wt, type:cur.type };
   save(); syncBoard(); SFX.ok(); buzz(false); openArmory(); render();
 }
@@ -864,6 +888,15 @@ function weaponFx(eq, crit, mon, ar) {
     hammer:`<path d="M30 4 L34 24 L52 14 L38 30 L58 38 L36 38 L42 58 L30 42 L18 58 L24 38 L2 38 L22 30 L8 14 L26 24 Z" fill="${E.c}" opacity=".9"/>`,
   };
   fxEl(mon, 'slash', `<svg viewBox="0 0 60 60" width="${Math.round(110*scale)}" height="${Math.round(110*scale)}" shape-rendering="crispEdges">${shapes[type]}</svg>`, 300);
+  // 專精武器：職業色的第二道斬擊與招式名
+  if (eq.sig && wt >= 1) {
+    const jc = JOB_WEAPONS[eq.job].color;
+    setTimeout(() => {
+      fxEl(mon, 'slash', `<svg viewBox="0 0 60 60" width="${Math.round(130*scale)}" height="${Math.round(130*scale)}" shape-rendering="crispEdges">${shapes[type].replaceAll(E.c, jc)}</svg>`, 300, 'transform:translate(-50%,-50%) scaleX(-1);');
+      fxEl(mon, 'ring', '', 450, `border-color:${jc};`);
+      fxEl(ar, 'signame', JOB_WEAPONS[eq.job].sig + '！', 700, `color:${jc};`);
+    }, 110);
+  }
   // 2. 衝擊波（騎士級以上、或錘）
   if (wt >= 10 || type === 'hammer') fxEl(mon, 'ring', '', 450, `border-color:${E.c};`);
   if (type === 'hammer') fxEl(ar, 'quake', '', 400, `background:${E.c};`);
@@ -1130,7 +1163,7 @@ function renderBoard() {
         <button class="cmd${boardSort==='dots'?' sel':''}" onclick="boardSort='dots';SFX.cursor();renderBoard()">戰力 DOTS</button></div>
       ${boardErr ? `<div class="red">${esc(boardErr)}</div>` : ''}
       ${rows.length ? rows.map((r,i) => `<div class="board-row${r.uid===user.uid?' me':''}">
-        <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36, r.equip)}
+        <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36, r.equip, jobKeyOf(r.squat||0, r.bench||0, r.deadlift||0, r.sex))}
         <div><div>${esc(r.name||'無名勇者')}</div>
           <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」${(()=>{const ev=evaluate([r.squat,r.bench,r.deadlift], r.sex);return ev?`<span style="color:#78d8f8">${ev.job.name}</span>`:''})()}<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
         <span class="gold" style="font-size:18px">${boardSort==='total' ? r.total : r.dots}</span></div>`).join('')
