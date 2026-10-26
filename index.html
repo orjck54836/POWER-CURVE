@@ -1123,7 +1123,7 @@ function renderIntel() {
 // ================= 英雄榜 =================
 // Firestore 規則需加上：
 // match /leaderboard/{uid} { allow read: if request.auth != null; allow write: if request.auth != null && request.auth.uid == uid; }
-let boardRows = null, boardSort = 'total', boardErr = '';
+let boardRows = null, boardSort = 'total', boardSex = null, boardErr = '';
 function myBoardDoc() {
   const lifts = {}; LIFTS.forEach(k => lifts[k] = refE1RM(k) ? round1(refE1RM(k)) : 0);
   const total = round1(lifts.squat + lifts.bench + lifts.deadlift);
@@ -1151,23 +1151,28 @@ function renderBoard() {
     return;
   }
   if (boardRows === null) { $('screen').innerHTML = win('英雄榜', '<div class="msg" style="min-height:0">正在召集各地的英雄……</div>'); loadBoard(); return; }
-  const rows = [...boardRows].filter(r => boardSort==='total' ? r.total > 0 : r.dots > 0)
+  if (!boardSex) boardSex = profile.sex === 'female' ? 'female' : 'male';
+  const rows = [...boardRows].filter(r => (r.sex === 'female' ? 'female' : 'male') === boardSex && (r[boardSort]||0) > 0)
     .sort((a,b) => (b[boardSort]||0) - (a[boardSort]||0));
+  const SORTS = [['total','總和'],['dots','DOTS'],['squat','深蹲'],['bench','臥推'],['deadlift','硬舉']];
+  const unit = boardSort === 'dots' ? '' : 'kg';
   const medal = i => i===0 ? '<span class="gold">1</span>' : i===1 ? '<span style="color:#d8dce8">2</span>' : i===2 ? '<span style="color:#c88850">3</span>' : `<span class="dim">${i+1}</span>`;
   $('screen').innerHTML =
     win('登錄', `<div class="row"><span>英雄名</span><span>${esc(heroName())}</span></div>
       <div class="cmds"><button class="cmd" onclick="openHeroName()">更改名字</button>
       <button class="cmd${profile.joinBoard?' sel':''}" onclick="profile.joinBoard=!profile.joinBoard;save();syncBoard();boardRows=null;SFX.ok();renderBoard()">${profile.joinBoard?'已登錄・點此退出':'登錄英雄榜'}<small>公開名字與三項成績</small></button></div>`) +
     win('英雄榜', `<div class="cmds" style="margin-bottom:6px">
-        <button class="cmd${boardSort==='total'?' sel':''}" onclick="boardSort='total';SFX.cursor();renderBoard()">三項總和</button>
-        <button class="cmd${boardSort==='dots'?' sel':''}" onclick="boardSort='dots';SFX.cursor();renderBoard()">戰力 DOTS</button></div>
+        <button class="cmd${boardSex==='male'?' sel':''}" onclick="boardSex='male';SFX.cursor();renderBoard()">♂ 男子組</button>
+        <button class="cmd${boardSex==='female'?' sel':''}" onclick="boardSex='female';SFX.cursor();renderBoard()">♀ 女子組</button></div>
+      <div class="chips" style="justify-content:flex-start;margin-bottom:8px">${SORTS.map(([k,l])=>`<button class="${boardSort===k?'on':''}" onclick="boardSort='${k}';SFX.cursor();renderBoard()">${l}</button>`).join('')}</div>
+      <div class="dim" style="font-size:12px;margin-bottom:4px">${boardSex==='female'?'女子組':'男子組'}・依${SORTS.find(s=>s[0]===boardSort)[1]}排序・共 ${rows.length} 位</div>
       ${boardErr ? `<div class="red">${esc(boardErr)}</div>` : ''}
       ${rows.length ? rows.map((r,i) => `<div class="board-row${r.uid===user.uid?' me':''}">
         <span style="font-size:20px;text-align:center">${medal(i)}</span>${heroSprite(r.sex, r.total, 36, r.equip, jobKeyOf(r.squat||0, r.bench||0, r.deadlift||0, r.sex))}
         <div><div>${esc(r.name||'無名勇者')}</div>
-          <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」${(()=>{const ev=evaluate([r.squat,r.bench,r.deadlift], r.sex);return ev?`<span style="color:#78d8f8">${ev.job.name}</span>`:''})()}<span class="dim">${r.sex==='female'?'♀':'♂'}　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
-        <span class="gold" style="font-size:18px">${boardSort==='total' ? r.total : r.dots}</span></div>`).join('')
-        : '<div class="dim">榜上還沒有英雄。成為第一個吧。</div>'}
+          <div class="gold" style="font-size:12px">「${titleOf(r.total).name}」${(()=>{const ev=evaluate([r.squat,r.bench,r.deadlift], r.sex);return ev?`<span style="color:#78d8f8">${ev.job.name}</span>`:''})()}<span class="dim">　蹲${r.squat||'—'} 臥${r.bench||'—'} 硬${r.deadlift||'—'}</span></div></div>
+        <span class="gold" style="font-size:18px">${r[boardSort]}${unit}</span></div>`).join('')
+        : `<div class="dim">${boardSex==='female'?'女子組':'男子組'}還沒有英雄${boardSort!=='total'?'有這項紀錄':''}。成為第一個吧。</div>`}
       <button class="cmd" onclick="boardRows=null;renderBoard()">重新整理</button>`);
 }
 function openHeroName() {
